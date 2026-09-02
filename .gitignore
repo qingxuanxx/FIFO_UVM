@@ -1,0 +1,16 @@
+sim/build/
+sim/csrc/
+sim/simv*
+sim/*.log
+sim/*.vcd
+sim/*.vpd
+sim/*.fsdb
+sim/*.vdb/
+sim/cov_report/
+sim/novas.conf
+sim/verdiLog/
+sim/ucli.key
+__pycache__/
+csrc/
+simv
+simv.daidir/
