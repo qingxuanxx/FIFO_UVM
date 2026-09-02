@@ -14,3 +14,12 @@ __pycache__/
 csrc/
 simv
 simv.daidir/
+*.vcd
+*.vpd
+*.fsdb
+novas.conf
+novas.rc
+verdiLog/
+vfastLog/
+verdi_config_file
+ucli.key

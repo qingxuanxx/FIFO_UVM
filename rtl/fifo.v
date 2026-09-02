@@ -1,4 +1,6 @@
-module my_fifo #(
+`timescale 1ns/1ps
+
+module fifo #(
   parameter int width = 8,
   parameter int depth = 16
 ) (

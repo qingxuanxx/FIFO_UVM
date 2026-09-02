@@ -2,7 +2,7 @@
 
 ## 1. 验证目标
 
-待验证的 DUT 是 `my_fifo`，它是一个单时钟同步 FIFO。
+待验证的 DUT 是 `fifo`，源文件为 `rtl/fifo.v`，它是一个单时钟同步 FIFO。
 
 默认参数为：
 
@@ -438,6 +438,7 @@ depth
 |---|---:|---:|
 | 最小深度 | 8 | 2 |
 | 小深度 | 8 | 4 |
+| 中等深度 | 8 | 8 |
 | 默认配置 | 8 | 16 |
 | 深 FIFO | 8 | 32 |
 | 单 bit 数据 | 1 | 16 |
@@ -471,7 +472,7 @@ depth = 12
 | M07 | `rd_error` 直接等于 empty | error test / scoreboard |
 | M08 | 复位时不清读写指针 | reset test / SVA |
 | M09 | 写指针加 2 | ordering test / SVA |
-| M10 | 删除 depth 二次幂参数检查 | invalid parameter test |
+| M10 | 删除 depth 为 2 的幂的参数检查 | invalid parameter test |
 
 ## 13. 回归计划
 
