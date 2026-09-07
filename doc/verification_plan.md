@@ -1,522 +1,211 @@
-# 同步 FIFO 验证计划
+# 同步 FIFO 验证计划（vPlan）
 
-## 1. 验证目标
+## 1. 基线、目标与当前状态
 
-待验证的 DUT 是 `fifo`，源文件为 `rtl/fifo.v`，它是一个单时钟同步 FIFO。
+验证对象为 [`rtl/fifo.v`](../rtl/fifo.v)，功能依据为 [FIFO Spec](fifo_spec.md) 的 S01–S12。目标是自动检查每拍请求的接受/拒绝、数据顺序、输出保持、空满状态、错误时序、复位和参数约束。
 
-默认参数为：
+当前仓库包含 RTL 和 `scratch/fifo_tb.sv`。该 smoke test 主要产生激励、打印状态和波形，没有完整的数据 scoreboard 或失败判定，不能据此宣称功能验证通过。`tb/fifo_if.sv`、`sim/Makefile`、`sim/filelist.f`、`sim/regress.py` 为待实现占位文件；UVM 组件、SVA 和覆盖率尚待实现。下文的 testcase 名称、回归安排和完成标准均为计划，不是已有执行结果。
+
+## 2. 平台与职责
+
+使用一个 active FIFO agent 统一驱动读写，以便精确产生同拍请求。所有组件使用同一组 `width/depth` 参数。
 
 ```text
-width = 8
-depth = 16
+sequence -> sequencer -> driver -> fifo_if -> DUT
+                                    |
+                                 monitor
+                                    |
+                        scoreboard / queue model
+                                    |
+                       checked sample -> coverage
+
+reset controller -> rst -> reset monitor -> scoreboard
+DUT / fifo_if -> bound assertions
 ```
 
-这个 FIFO 的主要特点是：
+- `fifo_item`：每项描述一拍的 `wr_en`、`rd_en`、`wr_data`；空闲也用一项表示。
+- driver：下降沿驱动请求，上升沿完成采样；无 item 和复位期间默认驱动空闲。专用复位测试允许在复位期间驱动请求。
+- reset controller：唯一的 `rst` 驱动者，可在非时钟沿产生复位；与 driver 协调，避免多源驱动。
+- monitor：从接口采集实际请求、沿前状态、沿后结果，并单独报告异步复位事件。
+- scoreboard：根据独立队列预测所有输出；不读取 driver 的预期事务，也不以 DUT 标志决定模型是否接受操作。
+- coverage：使用模型水位和已配对的沿前/沿后样本统计覆盖；内部指针回卷由白盒 cover/checker 补充。
 
-- 使用高电平有效的异步复位；
-- 使用带回卷位的扩展读写指针；
-- `depth` 必须是 2 的幂；
-- 使用注册型同步读，不是 FWFT；
-- FIFO 满时不能继续写；
-- FIFO 空时不能继续读；
-- 非法写入通过 `wr_error` 表示；
-- 非法读取通过 `rd_error` 表示。
+### 2.1 采样协议
 
-验证的主要目标是确认数据不会丢失、不会重复、不会被错误覆盖，并且空满状态、error 和读数据时序都符合 Spec。
+必须显式区分沿前与沿后，不能用一次普通 `@(posedge clk)` 读取代替全部采样。
 
-## 2. DUT 接口
+| 内容 | 采样约定 |
+|---|---|
+| `rst/wr_en/rd_en/wr_data` 与 `pre_full/pre_empty` | 上升沿 monitor clocking block，`input #1step` |
+| `rd_data/post_full/post_empty/wr_error/rd_error` | 同一上升沿 clocking block，显式 `input #0`，在 Observed 区采样 NBA 后结果 |
+| 异步复位结果 | `posedge rst` 触发，NBA 和组合逻辑稳定后检查，不等待下一工作沿 |
 
-| 信号 | 方向 | 作用 |
+沿前和沿后 clocking input 可以使用不同别名映射同一接口信号。monitor 在 clocking event 后读取采样值，使用 `cycle_id`、时间戳和 `reset_epoch` 配对。普通过程中的 `#0` 进入 Inactive 区，不能当作 NBA 完成的保证。
+
+异步复位检查可使用 deferred immediate assertion（如 `assert final`）或明确的稳定后采样机制。复位事件清空模型、重置期望读输出并推进 epoch；不得将复位前的半个周期记录与复位后的结果配对。复位与工作沿重合时统一按复位优先处理，不执行队列读写。测试应包含完全位于两个工作上升沿之间的复位脉冲，以证明模型没有遗漏异步复位。
+
+monitor 记录至少包含：`cycle_id`、`reset_epoch`、采样的复位/请求/写数据、沿前空满、沿后读数据/空满/error。复位记录另带事件时间。正常逐拍记录与复位记录由单一有序处理路径送入 scoreboard。
+
+## 3. 独立参考模型与判定
+
+模型使用 `logic [width-1:0] expected_q[$]`，另存 `expected_rd_data`，复位值为全 0。
+
+每个非复位工作沿执行：
+
+```text
+n_pre = expected_q.size()
+检查 pre_empty === (n_pre == 0)
+检查 pre_full  === (n_pre == depth)
+
+W = sampled_wr_en && (n_pre < depth)
+R = sampled_rd_en && (n_pre > 0)
+expected_wr_error = sampled_wr_en && (n_pre == depth)
+expected_rd_error = sampled_rd_en && (n_pre == 0)
+
+若 R：expected_rd_data = expected_q.pop_front()
+若 W：expected_q.push_back(sampled_wr_data)
+
+每拍检查 rd_data === expected_rd_data
+检查 post_empty === (expected_q.size() == 0)
+检查 post_full  === (expected_q.size() == depth)
+检查两个 error 与期望值完全一致
+```
+
+`W/R` 必须在修改队列前一次性算出。同拍读写先 pop 后 push，从而保留旧队首语义。即使 DUT 空满标志错误，模型也不能跟随错误状态更新。任何不匹配都记录失败，不静默重同步模型。
+
+复位事件立即丢弃队列、清零期望读输出，稳定后检查复位输出；复位期间不接受事务。每拍均检查读输出，包括空闲和非法读时的保持。比较使用四态严格比较，复位完成后输出 X/Z 必须报错；输入控制未知或写请求数据未知作为激励错误报告。
+
+统计成功写、成功读、复位丢弃项、数据比较、拒绝写/读和最大水位。整个测试应满足：
+
+```text
+累计成功写数 = 累计成功读数 + 累计复位丢弃项数 + 当前队列长度
+```
+
+普通功能测试结束前依据模型剩余长度发出排空请求，等待最后一笔检查完成，再要求队列为空。不得仅根据 DUT `empty` 提前结束排空。每个 testcase 另设最低检查次数或必要事件，防止零激励、未连接 monitor 等情况被误报为 PASS。
+
+## 4. 需求与用例追踪
+
+P0 为默认配置基础回归必过项，P1 为扩展回归项；最终完成要求两级全部闭环。以下用例均待实现。
+
+| 用例 | Spec | 激励与必要检查 | 优先级 |
+|---|---|---|---|
+| `tc_reset` | S03–S05、S12 | 非时钟沿断言复位，含沿间短脉冲；稳定后检查指针、读输出、空满和 error；释放后的首个工作沿可接受请求 | P0 |
+| `tc_reset_request` | S04 | 复位保持期间遍历 00/10/01/11 请求，检查状态不变且 error 为 0 | P0 |
+| `tc_mid_reset` | S04–S05、S08 | 分别在中间水位、满状态、非零读输出及 error 已拉高后复位；旧数据失效，重新写读正确 | P0 |
+| `tc_single_wr_rd` | S06–S09 | 写入再读出一个数据，检查本拍读输出与空满更新；包括全 0 和非零数据 | P0 |
+| `tc_burst` | S06–S08 | 连续写后连续读，每拍一个数据；长度取 1、depth−1、depth，逐项比对 | P0 |
+| `tc_read_timing` | S03、S07 | 先产生非零读输出，再执行空闲、只写及空读；输出保持，合法读在对应沿后更新 | P0 |
+| `tc_fill_to_full` | S06、S09 | 从空连续写恰好 depth 项，逐拍检查水位，最后一项接受后才置满 | P0 |
+| `tc_overflow` | S06、S08、S10、S12 | 写满后继续写至少 3 拍不同数据，再排空；拒绝写不移动指针且不覆盖旧内容 | P0 |
+| `tc_drain_to_empty` | S07–S09 | 从满逐项排空，最后一项仍正确输出，同时置空 | P0 |
+| `tc_underflow` | S07、S10、S12 | 建立非零历史读输出后，空读至少 3 拍；指针/输出保持且逐拍报错 | P0 |
+| `tc_simultaneous` | S06–S08、S11 | 水位 1 和 depth−1 各连续同拍读写至少 2*depth 拍，检查旧队首和水位保持；重复水位只执行一次 | P0 |
+| `tc_empty_wr_rd` | S07、S10–S11 | 空时同拍写读，只有写接受，读输出保持且报读错；后续读出新写项 | P0 |
+| `tc_full_wr_rd` | S06、S08、S10–S11 | 满时同拍写读，只有读接受，满标志清零但写错误为 1；排空确认拒绝项未进入 | P0 |
+| `tc_error_burst` | S10 | 两类拒绝分别持续 1 拍及至少 3 拍，随后空闲或合法请求使 error 清零；空/满但无对应请求不得报错 | P0 |
+| `tc_wraparound` | S08、S12 | 单个无复位阶段内成功写和成功读各至少 6*depth 次，覆盖各 3 次完整扩展指针回卷并检查顺序 | P0 |
+| `tc_random` | S03–S12 | 每 seed 至少 1000 工作拍，四种请求均可出现，含偏写、偏读、均衡阶段和受控运行中复位；结束排空 | P1 |
+| `tc_param_legal` | S01、S03–S12 | 按参数矩阵运行定向套件及指定随机 seeds，数据始终按 width 位生成和比较 | P1 |
+| `tc_param_invalid` | S02 | 每组非法参数独立构建/执行，核对拒绝阶段与具体诊断 | P1 |
+
+数据模式包括全 0、全 1、交替位、walking-one、递增截断值和全位宽随机值。窄位宽允许重复数据，依靠队列逐项检查；不要使用 `(1 << width)` 限定宽数据随机范围。
+
+## 5. 断言计划
+
+接口断言检查外部契约，bind 到 DUT 的白盒断言检查 S12；数据顺序仍由独立 scoreboard 判定。
+
+| 检查组 | 检查内容 |
+|---|---|
+| 复位 | 稳定后两个指针、读输出、error 清零，空满为 1/0；复位保持期间不操作 |
+| 状态 | 有效运行中输出无未知值，full/empty 不同时成立；指针与空满关系双向一致 |
+| 写指针 | 沿前接受写则按 ptr_width 位加一；其他情况保持，包括空闲和满写 |
+| 读指针 | 沿前接受读则按 ptr_width 位加一；其他情况保持，包括空闲和空读 |
+| 读保持 | 无接受读且无复位时，读输出保持 |
+| 错误 | 两个错误分别等于上一工作沿的拒绝条件，未拒绝时必须为 0 |
+| 回卷 | 地址回卷时最高位翻转；完整指针自然回卷；分别记录读写回卷次数 |
+
+在 `@(posedge clk)` 的并发 SVA 中，采样值位于 NBA 前。用非重叠蕴含检查该沿操作的结果，例如“接受写 `|=>` 写指针等于 `$past(wr_ptr)` 加一”，加法显式限定为 `ptr_width` 位。这里在下一采样沿检查的是前一沿更新结果，并不表示 DUT 多一拍延迟。
+
+普通时钟属性使用 `disable iff (rst)`，使用 `$past` 的属性必须有有效历史保护；异步复位另行检查，不能只靠被复位禁用的属性。覆盖统计应证明关键属性的前件实际触发，不能只统计无失败次数。
+
+## 6. 功能覆盖率
+
+覆盖在正常工作样本检查后采集，复位事件单独采集。覆盖使用模型沿前水位，不以 DUT 错误标志充当激励覆盖的唯一依据。
+
+| 覆盖项 | 必须命中的 bins / 事件 |
+|---|---|
+| 状态 × 请求 | 空、中间、满 × 00/10/01/11，共 12 个可达组合 |
+| 水位 | 对每个配置覆盖精确水位 0 到 depth；小深度不使用重叠的边界区间 bins |
+| 水位转移 | 0→1、1→0、depth−1→depth、depth→depth−1；中间水位同拍读写保持；depth=2 时合并重复转移 |
+| 读输出保持 | 有非零历史输出时的空闲、只写、空读，分别覆盖 |
+| 错误时序 | 写/读错误各自 0→1、1→1、1→0；空/满无请求时错误为 0 |
+| 同拍边界 | 空时写接受/读拒绝，满时写拒绝/读接受，中间水位两者接受 |
+| 回卷 | 读写地址回卷与完整指针回卷；专用测试各至少 3 次完整回卷 |
+| 复位 | 初始复位；空/中间/满时复位；error 有效时复位；非零读输出时复位；沿间脉冲 |
+| burst | 成功操作连续长度为 1、2 到 depth、超过 depth；长 burst 通过中间水位同拍读写实现 |
+| 数据 | 第 4 节列出的模式均参与成功写入并成功读出；检查各数据位 0/1 活动 |
+
+两个 error 同时为 1 在合法运行中不可达，不设为必须命中的 bin。参数导致的重复或空 bins 在构造时消除。参数回归覆盖分别报告，不能直接合并不同参数的水位 bins。
+
+必需功能 bins 要求 100% 命中；确实不可达的项需逐项说明并评审豁免，不能用总体 95% 掩盖关键边界缺失。代码覆盖作为补充：审查未命中的行、分支和 toggle，保留原因及处理记录，不替代需求闭环。
+
+## 7. 参数与回归矩阵
+
+每组合法参数运行第 4 节全部 P0 定向测试，并运行下表指定的 `tc_random`。参数修改必须重新 elaboration，不能仅使用未连接到参数的 plusarg。
+
+| width | depth | 目的 | 随机 seed 数 |
+|---:|---:|---|---:|
+| 8 | 16 | 默认配置 | 20 |
+| 8 | 2 | 最小深度 | 10 |
+| 8 | 4 | 小深度 | 10 |
+| 8 | 8 | 中等深度 | 5 |
+| 8 | 32 | 较大深度 | 5 |
+| 1 | 16 | 最小数据位宽 | 5 |
+| 32 | 16 | 宽数据 | 10 |
+| 1 | 2 | 两个最小参数组合 | 5 |
+
+非法配置分别测试 `(width, depth)=(0,16)、(-1,16)、(8,0)、(8,1)、(8,-1)、(8,3)、(8,6)、(8,12)`。使用最小 DUT wrapper，避免 UVM 类型或 testbench 参数计算先出错而掩盖 DUT 检查。
+
+对可正常 elaboration 的非法配置，要求命中对应参数 `$fatal` 消息；对更早被拒绝的配置，要求日志明确指出 DUT 中由非法参数引起的维度、切片等诊断，并记录工具/阶段。缺少库、语法错误、许可证问题、超时、崩溃或任意其他非零退出，不能算预期拒绝通过。
+
+### 7.1 回归结果判定
+
+计划在 `sim/Makefile` 和 `sim/regress.py` 实现统一入口，完成前不宣称已有一键回归。每个测试使用独立输出目录，记录源码版本、工具版本、参数、testcase、seed、命令、日志路径、覆盖数据库及结果。
+
+普通测试 PASS 必须同时满足：构建和运行成功、收到明确完成标记、所有必要检查实际发生、scoreboard 无不匹配、UVM error/fatal 为 0、断言失败为 0、排空与计数一致。超时或缺少完成标记均为 FAIL，不能仅凭进程退出码为 0 判定通过。
+
+非法参数测试单独记录 `EXPECTED_REJECT`，与基础设施失败及普通测试失败区分。回归汇总输出测试数、通过数、失败数和预期拒绝数；任一未预期失败或缺失结果使回归返回非零。失败保留可复现 seed 和日志，选择性保存波形。
+
+## 8. 检查器有效性：故障注入
+
+在隔离副本中一次只引入一个故障，先确认未修改基线通过，再运行目标测试。注入必须可编译且由预定功能检查发现；编译失败、超时或平台自身出错不算成功检出。以下为计划清单，不代表已检出。
+
+| ID | 注入故障 | 预期检出用例 / 检查 |
 |---|---|---|
-| `clk` | input | FIFO 工作时钟 |
-| `rst` | input | 高电平有效的异步复位 |
-| `wr_en` | input | 写使能 |
-| `wr_data` | input | 写入数据 |
-| `rd_en` | input | 读使能 |
-| `rd_data` | output | 注册型读数据 |
-| `full` | output | FIFO 满标志 |
-| `empty` | output | FIFO 空标志 |
-| `wr_error` | output | FIFO 满时仍然请求写入 |
-| `rd_error` | output | FIFO 空时仍然请求读取 |
-
-## 3. 验证平台结构
-
-因为读写使用同一个时钟，而且需要验证同拍读写，所以验证平台使用一个 FIFO agent，同时驱动 `wr_en`、`wr_data` 和 `rd_en`。
-
-```text
-fifo_sequence
-      |
-fifo_sequencer
-      |
-fifo_driver
-      |
-   fifo_if  ---------> DUT
-      |
-fifo_monitor
-      |
-      +-------------> fifo_scoreboard
-      |
-      +-------------> fifo_coverage
-
-DUT 内部/接口信号 ---> FIFO SVA
-```
-
-平台计划包含：
-
-- `fifo_if`：连接 DUT 和 UVM 平台；
-- `fifo_item`：描述每个周期的读写请求；
-- `fifo_sequencer`：把 sequence item 发送给 driver；
-- `fifo_driver`：驱动 `wr_en`、`wr_data` 和 `rd_en`；
-- `fifo_monitor`：采集 DUT 接口上的实际行为；
-- `fifo_scoreboard`：使用队列预测 FIFO 数据和状态；
-- `fifo_coverage`：统计功能场景是否覆盖；
-- SVA：检查空满、指针、error 和逐拍时序；
-- tests/sequences：产生定向和随机测试。
-
-## 4. Transaction 设计
-
-### 4.1 激励 transaction
-
-`fifo_item` 至少包含：
-
-```systemverilog
-rand logic             wr_en;
-rand logic             rd_en;
-rand logic [width-1:0] wr_data;
-```
-
-后面如果需要加入随机空闲周期，可以再增加 `delay` 字段。
-
-### 4.2 monitor transaction
-
-monitor 发送给 scoreboard 的 transaction 需要包含：
-
-```text
-wr_en
-rd_en
-wr_data
-pre_full
-pre_empty
-rd_data
-post_full
-post_empty
-wr_error
-rd_error
-rst
-```
-
-其中：
-
-- `pre_full/pre_empty` 表示上升沿之前的状态，用来判断本拍操作是否被接受；
-- `post_full/post_empty` 表示上升沿更新后的状态；
-- `rd_data`、`wr_error` 和 `rd_error` 要采集上升沿非阻塞赋值完成后的值。
-
-monitor 不能只采一次所有信号，否则容易把沿前状态和沿后结果混在一起，导致 scoreboard 差一拍。
-
-## 5. Feature 和 Testcase 对应关系
-
-Feature 表示需要验证的一条具体功能。每个 P0 Feature 都必须能够自动判断 PASS 或 FAIL。
-
-| ID | Feature | Testcase | 检查方式 | 优先级 |
-|---|---|---|---|---|
-| F01 | 异步复位后指针和输出正确 | `tc_reset` | monitor + SVA | P0 |
-| F02 | 复位期间不接受读写 | `tc_reset_request` | scoreboard + SVA | P0 |
-| F03 | 单个数据写入和读出正确 | `tc_single_wr_rd` | scoreboard | P0 |
-| F04 | 连续写入和读取顺序正确 | `tc_burst` | scoreboard | P0 |
-| F05 | `rd_data` 只在合法读以后更新 | `tc_read_timing` | scoreboard + SVA | P0 |
-| F06 | FIFO 可以保存完整的 `depth` 个数据 | `tc_fill_to_full` | scoreboard | P0 |
-| F07 | 写入第 `depth` 个数据后 `full=1` | `tc_fill_to_full` | scoreboard + SVA | P0 |
-| F08 | FIFO 满时继续写不会覆盖旧数据 | `tc_overflow` | scoreboard + SVA | P0 |
-| F09 | 满写时 `wr_error=1` | `tc_overflow` | scoreboard + SVA | P0 |
-| F10 | 读出最后一个数据后 `empty=1` | `tc_drain_to_empty` | scoreboard + SVA | P0 |
-| F11 | FIFO 空时继续读不会移动读指针 | `tc_underflow` | scoreboard + SVA | P0 |
-| F12 | 空读时 `rd_data` 保持且 `rd_error=1` | `tc_underflow` | scoreboard + SVA | P0 |
-| F13 | 普通状态同拍读写都成功 | `tc_simultaneous` | scoreboard | P0 |
-| F14 | 空状态同拍读写只有写成功 | `tc_empty_wr_rd` | scoreboard + coverage | P0 |
-| F15 | 满状态同拍读写只有读成功 | `tc_full_wr_rd` | scoreboard + coverage | P0 |
-| F16 | 读写指针回卷以后数据顺序正确 | `tc_wraparound` | scoreboard + coverage | P0 |
-| F17 | 随机长时间读写数据正确 | `tc_random` | scoreboard | P0 |
-| F18 | 运行中复位会清除逻辑有效数据 | `tc_mid_reset` | scoreboard + SVA | P1 |
-| F19 | 连续满写时 error 可以连续为 1 | `tc_error_burst` | scoreboard + SVA | P1 |
-| F20 | 连续空读时 error 可以连续为 1 | `tc_error_burst` | scoreboard + SVA | P1 |
-| F21 | `depth=2/4/8/16/32` 配置可运行 | 参数回归 | compile + scoreboard | P1 |
-| F22 | 非 2 的幂 depth 会被 `$fatal` 拒绝 | 非法参数测试 | 仿真退出结果 | P1 |
-| F23 | 不同数据位宽可以正常运行 | 参数回归 | scoreboard | P1 |
-
-## 6. Testcase 计划
-
-### 6.1 `tc_reset`
-
-测试内容：
-
-1. 在没有时钟上升沿的位置拉高 `rst`；
-2. 检查异步复位是否立即生效；
-3. 检查 `empty=1`、`full=0`；
-4. 检查 `rd_data=0`、`wr_error=0`、`rd_error=0`；
-5. 在时钟下降沿释放复位；
-6. 检查下一个上升沿以后能够正常读写。
-
-### 6.2 `tc_single_wr_rd`
-
-先写入一个固定数据，例如 `8'hA5`，再发出一个读请求。
-
-检查：
-
-- 写入后 FIFO 不再为空；
-- `rd_data` 在合法读上升沿之后更新为 `8'hA5`；
-- 读完后 FIFO 再次为空；
-- 两个 error 都没有错误拉高。
-
-### 6.3 `tc_burst`
-
-连续写入一组不同的数据，再连续读出。
-
-例如：
-
-```text
-写入：11, 22, 33, 44, 55
-期望读出：11, 22, 33, 44, 55
-```
-
-检查 FIFO 顺序和每拍连续读写能力。
-
-### 6.4 `tc_fill_to_full`
-
-连续写入恰好 `depth` 个数据。
-
-检查：
-
-- 前 `depth` 次写都成功；
-- 第 `depth` 次写入后 `full=1`；
-- FIFO 的有效容量不是 `depth-1`。
-
-### 6.5 `tc_overflow`
-
-先把 FIFO 写满，再继续写至少 3 个不同的数据。
-
-检查：
-
-- 这些写请求全部被拒绝；
-- 写指针保持；
-- 原来 FIFO 中的数据没有被覆盖；
-- 每个拒绝周期 `wr_error=1`；
-- 排空 FIFO 后读出的仍然是最初成功写入的数据。
-
-### 6.6 `tc_drain_to_empty`
-
-先写入若干数据，再全部读出。
-
-检查最后一个数据读出以后 `empty=1`，并确认所有数据只读出一次。
-
-### 6.7 `tc_underflow`
-
-FIFO 为空时连续读取至少 3 个周期。
-
-检查：
-
-- 读指针保持；
-- `rd_data` 保持；
-- 每个拒绝周期 `rd_error=1`。
-
-### 6.8 `tc_simultaneous`
-
-先把 FIFO 水位调整到非空非满，再连续进行同拍读写。
-
-检查：
-
-- 每拍读写都成功；
-- 读出的是本拍之前的队首；
-- 新数据进入队尾；
-- FIFO 中数据数量保持不变。
-
-### 6.9 `tc_empty_wr_rd`
-
-FIFO 为空时，同时拉高 `wr_en` 和 `rd_en`。
-
-检查：
-
-- 写入成功；
-- 读取失败；
-- `rd_error=1`；
-- 新数据没有在同一拍直接输出；
-- 写入后 `empty=0`。
-
-### 6.10 `tc_full_wr_rd`
-
-FIFO 满时，同时拉高 `wr_en` 和 `rd_en`。
-
-检查：
-
-- 读取成功；
-- 写入失败；
-- `wr_error=1`；
-- 被拒绝的数据没有进入 FIFO；
-- 读取后 `full=0`。
-
-### 6.11 `tc_wraparound`
-
-交替进行多组读写，让读写指针至少分别回卷 3 次。写入数据使用递增值或带编号的数据，方便检查顺序。
-
-### 6.12 `tc_random`
-
-随机运行至少 1000 个周期，让下面四种组合都能出现：
-
-```text
-wr_en=0, rd_en=0
-wr_en=1, rd_en=0
-wr_en=0, rd_en=1
-wr_en=1, rd_en=1
-```
-
-随机结束后停止写入，继续读取直到 FIFO 为空。scoreboard 中不应该留下未读数据。
-
-### 6.13 `tc_mid_reset`
-
-FIFO 中已经有数据时拉高 `rst`。
-
-检查：
-
-- FIFO 立即进入空状态；
-- 复位前没有读出的数据作废；
-- 复位释放后可以重新正常读写。
-
-## 7. Reference Model
-
-参考模型使用 SystemVerilog queue：
-
-```systemverilog
-logic [width-1:0] expected_q[$];
-```
-
-参考模型和 DUT 使用不同方法：DUT 使用扩展指针，参考模型使用 queue，这样不会把 DUT 的同一个错误复制到模型里。
-
-每个时钟周期先根据 monitor 采集到的沿前状态判断：
-
-```text
-write_accept = wr_en && !pre_full
-read_accept  = rd_en && !pre_empty
-```
-
-模型处理规则：
-
-1. 如果 `read_accept=1`，从 `expected_q` 队首取出期望数据；
-2. 如果 `write_accept=1`，把 `wr_data` 放到 `expected_q` 队尾；
-3. 合法读时比较 `rd_data` 和期望数据；
-4. 根据 queue 是否为空或达到 `depth`，比较 DUT 沿后的 `empty/full`；
-5. 根据拒绝条件比较 `wr_error/rd_error`。
-
-普通状态同拍读写时，模型先 pop 再 push，读出的应该是本拍之前已经存在的旧队首。
-
-参考模型必须连接 monitor，不能连接 driver。driver 表示“准备发送什么”，monitor 才表示 DUT 接口上实际发生了什么。
-
-## 8. Scoreboard 检查内容
-
-scoreboard 需要自动检查：
-
-- 成功读出的数据是否正确；
-- 数据顺序是否正确；
-- 被拒绝的写数据是否没有进入模型；
-- 空读是否没有消耗数据；
-- `post_empty` 是否等于 `expected_q.size()==0`；
-- `post_full` 是否等于 `expected_q.size()==depth`；
-- `wr_error` 是否等于沿前 `wr_en && full`；
-- `rd_error` 是否等于沿前 `rd_en && empty`；
-- 复位时是否清空参考模型；
-- 测试结束时是否还有未读数据；
-- 是否至少发生过一次有效检查。
-
-scoreboard 还可以统计：
-
-```text
-成功写次数
-成功读次数
-数据匹配次数
-数据不匹配次数
-满写次数
-空读次数
-最大模型水位
-```
-
-## 9. SVA 检查计划
-
-### 9.1 复位
-
-- 复位后 `wr_ptr=0`、`rd_ptr=0`；
-- 复位后 `empty=1`、`full=0`；
-- 复位后 `rd_data=0`；
-- 复位后两个 error 为 0。
-
-异步复位是否立即生效，可以在 testbench 中检测 `posedge rst` 后的状态。时钟相关行为再使用以 `clk` 为采样时钟的 SVA。
-
-### 9.2 空满状态
-
-- `full` 和 `empty` 不能同时为 1；
-- 读写指针相同时 `empty=1`；
-- 地址部分相同且最高位不同时 `full=1`。
-
-### 9.3 写操作
-
-- `wr_en && full` 时，下一拍写指针保持；
-- `wr_en && !full` 时，下一拍写指针加 1；
-- 满写时 `wr_error=1`；
-- 没有满写请求时 `wr_error=0`。
-
-### 9.4 读操作
-
-- `rd_en && empty` 时，下一拍读指针和 `rd_data` 保持；
-- `rd_en && !empty` 时，下一拍读指针加 1；
-- 空读时 `rd_error=1`；
-- 没有空读请求时 `rd_error=0`。
-
-### 9.5 指针回卷
-
-- 指针低地址位从 `depth-1` 回到 0；
-- 地址回卷时扩展最高位正确翻转；
-- 指针每次最多只增加 1。
-
-写断言时要注意 SVA 在时钟沿采样的是非阻塞赋值更新前的值，因此需要根据实际时序选择 `|->`、`|=>` 或 `$past()`。
-
-## 10. 功能覆盖率
-
-### 10.1 基本请求覆盖
-
-```text
-wr_en = 0/1
-rd_en = 0/1
-```
-
-需要覆盖四种读写组合：
-
-```text
-空闲
-只写
-只读
-同时读写
-```
-
-### 10.2 状态和请求交叉覆盖
-
-至少需要：
-
-```text
-full × wr_en × rd_en
-empty × wr_en × rd_en
-```
-
-重点确认：
-
-- 满状态写入；
-- 满状态同拍读写；
-- 空状态读取；
-- 空状态同拍读写。
-
-### 10.3 FIFO 水位
-
-scoreboard 可以根据 queue size 采集水位：
-
-```text
-0
-1
-2 到 depth-2
-depth-1
-depth
-```
-
-### 10.4 其他覆盖
-
-- `wr_error` 和 `rd_error`；
-- 写指针回卷；
-- 读指针回卷；
-- 初始复位和运行中复位；
-- 单次、短 burst 和长度大于 depth 的 burst。
-
-## 11. 参数回归
-
-合法配置计划：
-
-| 配置 | width | depth |
-|---|---:|---:|
-| 最小深度 | 8 | 2 |
-| 小深度 | 8 | 4 |
-| 中等深度 | 8 | 8 |
-| 默认配置 | 8 | 16 |
-| 深 FIFO | 8 | 32 |
-| 单 bit 数据 | 1 | 16 |
-| 宽数据 | 32 | 16 |
-
-非法参数测试：
-
-```text
-width = 0
-depth = 0
-depth = 1
-depth = 3
-depth = 6
-depth = 12
-```
-
-非法配置的预期结果是 `$fatal`，不能把这种预期失败统计成回归失败。
-
-## 12. 故障注入
-
-为了证明平台能够发现问题，计划通过故意修改 DUT 进行故障注入，并确认对应测试能够失败。
-
-| 编号 | 故意加入的问题 | 应该由什么发现 |
-|---|---|---|
-| M01 | 删除 full 判断中的最高位比较 | full test / scoreboard / SVA |
-| M02 | 满写时仍然移动写指针 | overflow test / SVA |
-| M03 | 满写时仍然写 RAM | overflow test / scoreboard |
-| M04 | 空读时把 `rd_data` 清零 | underflow test / SVA |
-| M05 | 读数据使用移动后的下一个地址 | scoreboard |
-| M06 | `wr_error` 直接等于 full | error test / scoreboard |
-| M07 | `rd_error` 直接等于 empty | error test / scoreboard |
-| M08 | 复位时不清读写指针 | reset test / SVA |
-| M09 | 写指针加 2 | ordering test / SVA |
-| M10 | 删除 depth 为 2 的幂的参数检查 | invalid parameter test |
-
-## 13. 回归计划
-
-回归脚本需要：
-
-1. 依次运行所有 testcase；
-2. 对随机测试运行多个 seed；
-3. 解析日志中的 UVM error、fatal 和 assertion failure；
-4. 输出每个测试的 PASS/FAIL；
-5. 只要有一个测试失败，脚本退出码就不是 0；
-6. 对非法参数测试单独判断预期 `$fatal`。
-
-随机回归建议：
-
-```text
-默认配置随机测试：至少 20 个 seed
-depth=2：至少 10 个 seed
-depth=4：至少 10 个 seed
-width=32：至少 10 个 seed
-```
-
-## 14. 完成标准
-
-满足下面条件后，可以认为这个 FIFO 验证项目完成：
-
-- [ ] 所有 P0 和 P1 Feature 都有对应测试；
-- [ ] 所有功能测试自动 PASS；
-- [ ] scoreboard 数据 mismatch 为 0；
-- [ ] UVM error 和 fatal 为 0；
-- [ ] SVA 没有未解释的失败；
-- [ ] 功能覆盖率达到 95% 以上；
-- [ ] 没有覆盖到的 bin 有明确原因；
-- [ ] 所有合法参数配置通过；
-- [ ] 所有非法参数配置都按预期被拒绝；
-- [ ] 至少 10 个故障注入都能被平台发现；
-- [ ] 一条命令可以完成回归并汇总结果。
-
-## 15. 当前验证范围之外的内容
-
-当前项目不验证：
-
-- 异步 FIFO 和跨时钟域；
-- 非 2 的幂深度的正常功能；
-- FWFT 读模式；
-- 空状态读写旁路；
-- 满状态零气泡读写；
-- FPGA 或 ASIC RAM 宏的具体物理时序。
+| M01 | full 判断丢失最高位条件 | `tc_fill_to_full` / 独立模型状态比较 |
+| M02 | 满写仍移动写指针 | `tc_overflow` / 指针断言及状态比较 |
+| M03 | 满写仍更新 RAM | `tc_overflow` / 排空数据比较 |
+| M04 | 空读将 rd_data 清零 | `tc_underflow` / 非零历史输出保持检查 |
+| M05 | 读取下一个地址 | `tc_burst` / 数据顺序比较 |
+| M06 | wr_error 直接跟随 full | `tc_error_burst` / 满而无写请求检查 |
+| M07 | rd_error 直接跟随 empty | `tc_error_burst` / 空而无读请求检查 |
+| M08 | 复位不清指针 | `tc_mid_reset` / 非空状态复位检查 |
+| M09 | 写指针每次加 2 | `tc_burst` / 数据比较和指针断言 |
+| M10 | 删除 depth 为 2 的幂检查 | `tc_param_invalid`，使用 depth=6 / 未发生预期拒绝 |
+
+每项报告记录故障差异、testcase/seed、首个有效失败及检查器名称。遗漏项必须补充激励或检查后重新验证。
+
+## 9. 实施顺序与完成标准
+
+实施顺序：interface/top 与采样协议 → agent/monitor → 独立模型和复位事件处理 → P0 定向用例 → SVA/coverage → 随机与参数回归 → 故障注入和覆盖闭环。
+
+最终完成需全部满足：
+
+- S01–S12 每条需求均有已实现、已执行的检查和结果记录。
+- 全部 P0/P1 用例、合法参数配置和指定随机 seeds 通过，非法配置按规则被拒绝。
+- 数据不匹配、UVM error/fatal、断言失败均为 0；没有超时、遗漏检查或未解释的 X/Z。
+- 必需功能 bins 全覆盖或有逐项评审豁免，代码覆盖缺口均有记录。
+- M01–M10 全部由预期检查有效检出。
+- 回归可通过文档化的一条命令复现，输出完整结果和非零失败退出码。
+
+范围之外与 Spec 第 6 节一致；不以本计划宣称 CDC、物理时序、RAM 宏、面积或功耗验证完成。
