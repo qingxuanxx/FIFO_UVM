@@ -2,7 +2,9 @@
 
 这是一个同步 FIFO 设计与 UVM 验证学习项目。项目按照 Spec、RTL、基础 testbench、UVM 验证平台、覆盖率与回归的顺序逐步完成。
 
-目前已有 FIFO RTL、设计说明、验证计划和基础 testbench。基础测试已使用 VCS 编译运行，并通过 Verdi 查看波形；它主要用于观察信号，还没有完整的数据比较和自动判错。下一步是搭建 UVM 验证平台。
+目前已完成 FIFO RTL、设计说明、验证计划、基础 testbench，以及 UVM interface 和 top。最小 UVM test 已通过 VCS 编译和运行，能够取得 interface 并正常结束。下一步开始编写 transaction、sequence、sequencer 和 driver。
+
+基础 testbench 用于观察读写信号和波形；当前 UVM test 只检查测试启动和接口获取，还没有发送读写请求，也没有数据比较和自动判错。
 
 - [设计说明（Spec）](doc/fifo_spec.md)：参数、接口、复位、读写操作和错误信号。
 - [验证计划（vPlan）](doc/verification_plan.md)：测试步骤、检查方法、覆盖率和回归通过条件。
@@ -71,15 +73,17 @@ FIFO_UVM/
 │   └── verification_plan.md      # FIFO 验证计划
 ├── rtl/
 │   └── fifo.v                    # FIFO RTL
-├── scratch/
+├── smoke/
 │   └── fifo_tb.sv                # 非 UVM smoke testbench
 ├── tb/
-│   ├── fifo_if.sv                # FIFO interface（待完成）
-│   ├── agents/                   # driver、monitor、sequencer
-│   ├── env/                      # environment、scoreboard、coverage
-│   ├── seq/                      # sequences
-│   ├── sva/                      # assertions
-│   └── tests/                    # testcases
+│   ├── fifo_if.sv                # 接口信号、driver 和 monitor 的 clocking block
+│   ├── fifo_tb_top.sv            # 时钟、复位、DUT 连接和 UVM 启动
+│   ├── agents/                   # driver、monitor、sequencer（待实现）
+│   ├── env/                      # environment、scoreboard、coverage（待实现）
+│   ├── seq/                      # sequences（待实现）
+│   ├── sva/                      # assertions（待实现）
+│   └── tests/
+│       └── fifo_test.sv          # 最小 UVM test：获取接口，等待时钟后结束
 └── sim/
     ├── Makefile                  # 编译和仿真入口（待完成）
     ├── filelist.f                # UVM 文件列表（待完成）
@@ -94,7 +98,7 @@ FIFO_UVM/
 - [x] 基础 smoke testbench
 - [x] VCS 编译和仿真
 - [x] Verdi 波形查看
-- [ ] UVM interface 和 top
+- [x] UVM interface 和 top
 - [ ] transaction、sequence、sequencer 和 driver
 - [ ] monitor 和 agent
 - [ ] reference model 和 scoreboard
@@ -103,14 +107,54 @@ FIFO_UVM/
 - [ ] 自动回归和补齐未覆盖的测试
 - [ ] 故意修改 RTL，确认测试能发现错误
 
-## 使用 VCS 编译和运行
+### 2026-09-07 晚间完成内容
+
+- `fifo_if.sv`：定义接口信号；`drv_cb` 在下降沿驱动请求，`mon_cb` 分别采集上升沿前的请求、状态和上升沿后的结果。
+- `fifo_tb_top.sv`：产生 10ns 周期时钟，在 20ns 释放复位，连接 interface 和 DUT，通过 `uvm_config_db::set()` 提供接口，调用 `run_test("fifo_test")`。
+- `fifo_test.sv`：注册 test，在 `build_phase()` 获取接口，在 `run_phase()` 等待 6 个上升沿，通过 objection 控制测试结束。
+- 将早期普通 testbench 的目录由 `scratch/` 改为 `smoke/`。
+
+本次检查依据本地 `compile.log`、`sim.log`：VCS V-2023.12-SP2、UVM-1.1d.Synopsys 完成编译和运行；日志显示 `FIFO interface obtained` 和 `Test completed`，仿真在 55ns 结束，`UVM_WARNING`、`UVM_ERROR`、`UVM_FATAL` 均为 0。这些结果说明最小 UVM 测试已跑通，尚不代表 FIFO 读写功能验证通过。
+
+## 编译和运行 UVM 测试
+
+安装并配置好 VCS 后，在项目根目录执行：
+
+```bash
+vcs -full64 -sverilog -ntb_opts uvm \
+    -timescale=1ns/1ps \
+    +incdir+tb \
+    -kdb -debug_access+all \
+    rtl/fifo.v \
+    tb/fifo_if.sv \
+    tb/fifo_tb_top.sv \
+    -top fifo_tb_top \
+    -o simv_if \
+    -l compile.log
+```
+
+编译成功后运行：
+
+```bash
+./simv_if -l sim.log
+```
+
+- `-ntb_opts uvm`：加载 VCS 提供的 UVM 库。
+- `-timescale=1ns/1ps`：为未显式声明时间尺度的设计单元提供默认值。
+- `+incdir+tb`：指定 include 文件的查找目录。top 已包含 `tests/fifo_test.sv`，不需要在命令中再次列出它。
+- `-top fifo_tb_top`：使用 UVM 仿真顶层。
+- `-l`：保存编译或仿真日志。
+
+正常运行时应看到 `FIFO interface obtained`、`Test completed`，并检查 UVM 汇总中的错误数量。当前 test 的 virtual interface 固定为 8 位，与 top 的默认 `width=8` 对应；后续做参数测试前，需要统一 test 和 top 的位宽配置。
+
+## 编译和运行普通 smoke 测试
 
 安装并配置好 VCS 后，在项目根目录执行。当前 `sim/Makefile` 和回归脚本还未实现，先直接编译基础 testbench：
 
 ```bash
 vcs -full64 -sverilog -kdb -debug_access+all \
     rtl/fifo.v \
-    scratch/fifo_tb.sv \
+    smoke/fifo_tb.sv \
     -top fifo_tb \
     -o simv
 ```
@@ -142,12 +186,12 @@ vcs -full64 -sverilog -kdb -debug_access+all \
 
 ## 使用 Verdi 查看波形
 
-如果 Verdi 运行在 Linux、界面显示到 Windows，需要先在 Windows 启动 XLaunch/VcXsrv，然后执行：
+以下命令查看普通 smoke 测试产生的 `fifo_tb.vcd`。当前 UVM top 尚未添加波形输出代码。如果 Verdi 运行在 Linux、界面显示到 Windows，需要先在 Windows 启动 XLaunch/VcXsrv，然后执行：
 
 ```bash
 verdi -sv \
     rtl/fifo.v \
-    scratch/fifo_tb.sv \
+    smoke/fifo_tb.sv \
     -top fifo_tb \
     -ssf fifo_tb.vcd &
 ```
@@ -196,19 +240,20 @@ DUT 内部/接口信号 ---> FIFO SVA
 
 ## 下一步
 
-按照以下顺序搭建 UVM 平台：
+从 `fifo_item` 开始，逐步完成下面的内容：
 
 ```text
-fifo_if
-  -> fifo_item
+fifo_item
+  -> fifo_sequence
   -> fifo_sequencer
   -> fifo_driver
   -> fifo_monitor
   -> fifo_agent
   -> fifo_scoreboard
   -> fifo_env
-  -> fifo_test
-  -> fifo_tb_top
+  -> 扩展现有 fifo_test
 ```
 
-先完成单次写读的自动比较，再按照 vPlan 加入空满、同时读写、复位和回卷等用例。最后实现覆盖率统计、参数测试和自动回归。具体步骤与通过条件见 [验证计划](doc/verification_plan.md)。
+先让 `fifo_item` 描述一拍的 `wr_en`、`rd_en` 和 `wr_data`，再通过 sequence、sequencer 和 driver 把请求发送到 DUT。之后加入 monitor 采样和 scoreboard 数据比较，由 env 组织组件，并扩展现有 test 来运行读写测试。
+
+完成基本读写比较后，再按照 vPlan 加入空满、同时读写、复位和回卷等用例，最后实现覆盖率统计、参数测试和自动回归。具体步骤与通过条件见 [验证计划](doc/verification_plan.md)。
