@@ -107,15 +107,6 @@ FIFO_UVM/
 - [ ] 自动回归和补齐未覆盖的测试
 - [ ] 故意修改 RTL，确认测试能发现错误
 
-### 2026-09-07 晚间完成内容
-
-- `fifo_if.sv`：定义接口信号；`drv_cb` 在下降沿驱动请求，`mon_cb` 分别采集上升沿前的请求、状态和上升沿后的结果。
-- `fifo_tb_top.sv`：产生 10ns 周期时钟，在 20ns 释放复位，连接 interface 和 DUT，通过 `uvm_config_db::set()` 提供接口，调用 `run_test("fifo_test")`。
-- `fifo_test.sv`：注册 test，在 `build_phase()` 获取接口，在 `run_phase()` 等待 6 个上升沿，通过 objection 控制测试结束。
-- 将早期普通 testbench 的目录由 `scratch/` 改为 `smoke/`。
-
-本次检查依据本地 `compile.log`、`sim.log`：VCS V-2023.12-SP2、UVM-1.1d.Synopsys 完成编译和运行；日志显示 `FIFO interface obtained` 和 `Test completed`，仿真在 55ns 结束，`UVM_WARNING`、`UVM_ERROR`、`UVM_FATAL` 均为 0。这些结果说明最小 UVM 测试已跑通，尚不代表 FIFO 读写功能验证通过。
-
 ## 编译和运行 UVM 测试
 
 安装并配置好 VCS 后，在项目根目录执行：
@@ -257,3 +248,5 @@ fifo_item
 先让 `fifo_item` 描述一拍的 `wr_en`、`rd_en` 和 `wr_data`，再通过 sequence、sequencer 和 driver 把请求发送到 DUT。之后加入 monitor 采样和 scoreboard 数据比较，由 env 组织组件，并扩展现有 test 来运行读写测试。
 
 完成基本读写比较后，再按照 vPlan 加入空满、同时读写、复位和回卷等用例，最后实现覆盖率统计、参数测试和自动回归。具体步骤与通过条件见 [验证计划](doc/verification_plan.md)。
+
+> 最后更新：2026-09-07
