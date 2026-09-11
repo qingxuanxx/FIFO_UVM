@@ -10,6 +10,7 @@ module fifo_tb_top;
     // 导入 UVM 包：uvm_pkg 包含 UVM 提供的类。导入后，下面才能使用 uvm_config_db
     import uvm_pkg::*;
 
+    `include "agents/fifo_item.sv"
     `include "tests/fifo_test.sv"
 
     parameter int width = 8;

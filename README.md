@@ -99,7 +99,8 @@ FIFO_UVM/
 - [x] VCS 编译和仿真
 - [x] Verdi 波形查看
 - [x] UVM interface 和 top
-- [ ] transaction、sequence、sequencer 和 driver
+- [x] transaction（`fifo_item`）
+- [ ] sequence、sequencer 和 driver
 - [ ] monitor 和 agent
 - [ ] reference model 和 scoreboard
 - [ ] 功能覆盖率
@@ -198,4 +199,4 @@ dut.wr_ptr dut.rd_ptr
 dut.wr_valid dut.rd_valid
 ```
 
-> 最后更新：2026-09-07
+> 最后更新：2026-09-11
