@@ -92,14 +92,14 @@ FIFO_UVM/
 
 ## 当前进度
 
-- [x] 完成设计规格与验证计划
-- [x] 完成 RTL 与基础仿真
-- [x] 搭建 UVM top 和 interface
-- [x] 搭建激励通路：item、sequence、sequencer、driver
-- [ ] 搭建采集通路：monitor、agent
-- [ ] 搭建检查平台：reference model、scoreboard、env
-- [ ] 完成功能覆盖率与 SVA
-- [ ] 完成测试回归、覆盖率收敛与错误注入
+- [x] spec 和 vplan
+- [x] RTL 和 smoke 测试
+- [x] UVM top 和 interface
+- [x] item、sequence、sequencer 和 driver
+- [ ] monitor 和 agent
+- [ ] reference model、scoreboard 和 env
+- [ ] 功能覆盖率和 SVA
+- [ ] 自动回归、补齐未覆盖用例，修改 RTL 检查测试能否发现错误
 
 ## 编译和运行 UVM 测试
 
