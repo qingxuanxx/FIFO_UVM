@@ -199,4 +199,4 @@ dut.wr_ptr dut.rd_ptr
 dut.wr_valid dut.rd_valid
 ```
 
-> 最后更新：2026-09-11
+> 最后更新：2026-09-12

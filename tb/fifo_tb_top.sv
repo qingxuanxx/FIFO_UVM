@@ -11,6 +11,10 @@ module fifo_tb_top;
     import uvm_pkg::*;
 
     `include "agents/fifo_item.sv"
+    `include "agents/fifo_sequencer.sv"
+    `include "agents/fifo_driver.sv"
+    `include "agents/fifo_agent.sv"
+    `include "seq/fifo_sequence.sv"
     `include "tests/fifo_test.sv"
 
     parameter int width = 8;
@@ -62,8 +66,9 @@ module fifo_tb_top;
     // 5. 打印信号
     initial begin
         $monitor(
-            "time = %0t, clk = %b, rst = %b, wr_en = %b, rd_en = %b, wr_data = %h, rd_data = %h", 
-            $time, clk, vif.rst, vif.wr_en, vif.rd_en, vif.wr_data, vif.rd_data
+            "time = %0t, clk = %b, rst = %b, wr_en = %b, rd_en = %b, wr_data = %h, rd_data = %h, wr_error = %b, rd_error = %b",
+            $time, clk, vif.rst, vif.wr_en, vif.rd_en,
+            vif.wr_data, vif.rd_data, vif.wr_error, vif.rd_error
         );
     end
 

@@ -4,7 +4,7 @@
 class fifo_item extends uvm_sequence_item;
 
     // 注册到 uvm factory
-    `uvm_object_utils(fifo_item);
+    `uvm_object_utils(fifo_item)
 
     // 一拍的读写请求
     rand bit wr_en;
@@ -12,7 +12,7 @@ class fifo_item extends uvm_sequence_item;
     rand bit [7:0] wr_data;
 
     // 构造函数，object 没有 parent
-    function new (string name = "fifo_item");
+    function new(string name = "fifo_item");
         super.new(name);
     endfunction
 
