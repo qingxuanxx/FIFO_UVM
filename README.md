@@ -2,9 +2,9 @@
 
 这是一个同步 FIFO 设计与 UVM 验证学习项目。项目按照 Spec、RTL、基础 testbench、UVM 验证平台、覆盖率与回归的顺序逐步完成。
 
-目前已完成 FIFO RTL、设计说明、验证计划、基础 testbench，以及 UVM interface 和 top。最小 UVM test 已通过 VCS 编译和运行，能够取得 interface 并正常结束。下一步开始编写 transaction、sequence、sequencer 和 driver。
+目前已完成 FIFO RTL、设计说明、验证计划、基础 testbench，以及 UVM interface、transaction、sequence、sequencer 和 driver。UVM test 已能产生一笔随机请求并通过 driver 驱动 DUT，下一步实现 monitor。
 
-基础 testbench 用于观察读写信号和波形；当前 UVM test 只检查测试启动和接口获取，还没有发送读写请求，也没有数据比较和自动判错。
+基础 testbench 用于观察读写信号和波形；当前 UVM test 尚未加入 monitor、scoreboard 和自动数据比较。
 
 - [设计说明（Spec）](doc/fifo_spec.md)：参数、接口、复位、读写操作和错误信号。
 - [验证计划（vPlan）](doc/verification_plan.md)：测试步骤、检查方法、覆盖率和回归通过条件。
@@ -78,12 +78,12 @@ FIFO_UVM/
 ├── tb/
 │   ├── fifo_if.sv                # 接口信号、driver 和 monitor 的 clocking block
 │   ├── fifo_tb_top.sv            # 时钟、复位、DUT 连接和 UVM 启动
-│   ├── agents/                   # driver、monitor、sequencer（待实现）
+│   ├── agents/                   # item、sequencer、driver 和 agent
 │   ├── env/                      # environment、scoreboard、coverage（待实现）
-│   ├── seq/                      # sequences（待实现）
+│   ├── seq/                      # FIFO sequence
 │   ├── sva/                      # assertions（待实现）
 │   └── tests/
-│       └── fifo_test.sv          # 最小 UVM test：获取接口，等待时钟后结束
+│       └── fifo_test.sv          # 创建 agent 并启动 sequence
 └── sim/
     ├── Makefile                  # 编译和仿真入口（待完成）
     ├── filelist.f                # UVM 文件列表（待完成）
@@ -100,8 +100,8 @@ FIFO_UVM/
 - [x] Verdi 波形查看
 - [x] UVM interface 和 top
 - [x] transaction（`fifo_item`）
-- [ ] sequence、sequencer 和 driver
-- [ ] monitor 和 agent
+- [x] sequence、sequencer 和 driver
+- [ ] monitor 和完善 agent
 - [ ] reference model 和 scoreboard
 - [ ] 功能覆盖率
 - [ ] SVA
@@ -137,7 +137,7 @@ vcs -full64 -sverilog -ntb_opts uvm \
 - `-top fifo_tb_top`：使用 UVM 仿真顶层。
 - `-l`：保存编译或仿真日志。
 
-正常运行时应看到 `FIFO interface obtained`、`Test completed`，并检查 UVM 汇总中的错误数量。当前 test 的 virtual interface 固定为 8 位，与 top 的默认 `width=8` 对应；后续做参数测试前，需要统一 test 和 top 的位宽配置。
+正常运行时应看到 `FIFO interface obtained`、`FIFO_DRIVER`、`Sequence completed` 和 `Test completed`，并检查 UVM 汇总中的错误数量。当前 test 的 virtual interface 固定为 8 位，与 top 的默认 `width=8` 对应；后续做参数测试前，需要统一 test 和 top 的位宽配置。
 
 ## 编译和运行普通 smoke 测试
 
