@@ -11,6 +11,7 @@ module fifo_tb_top;
     import uvm_pkg::*;
 
     `include "agents/fifo_item.sv"
+    `include "agents/fifo_monitor_item.sv"
     `include "agents/fifo_sequencer.sv"
     `include "agents/fifo_driver.sv"
     `include "agents/fifo_monitor.sv"
