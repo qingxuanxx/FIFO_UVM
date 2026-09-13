@@ -2,7 +2,7 @@
 
 这是一个同步 FIFO 设计与 UVM 验证学习项目。项目按照 Spec、RTL、基础 testbench、UVM 验证平台、覆盖率与回归的顺序逐步完成。
 
-目前已完成 FIFO RTL、设计说明、验证计划、基础 testbench，以及 UVM interface、transaction、sequence、sequencer 和 driver。UVM test 已能产生一笔随机请求并通过 driver 驱动 DUT，下一步实现 monitor。
+目前已完成 FIFO RTL、设计说明、验证计划、基础 testbench，以及 UVM interface、transaction、sequence、sequencer、driver、monitor 和 agent。UVM test 已能产生随机请求、驱动 DUT 并采样结果，下一步实现 scoreboard。
 
 基础 testbench 用于观察读写信号和波形；当前 UVM test 尚未加入 monitor、scoreboard 和自动数据比较。
 
@@ -96,7 +96,7 @@ FIFO_UVM/
 - [x] RTL 和 smoke 测试
 - [x] UVM top 和 interface
 - [x] item、sequence、sequencer 和 driver
-- [ ] monitor 和 agent
+- [x] monitor 和 agent
 - [ ] reference model、scoreboard 和 env
 - [ ] 功能覆盖率和 SVA
 - [ ] 自动回归、补齐未覆盖用例，修改 RTL 检查测试能否发现错误
@@ -192,4 +192,4 @@ dut.wr_ptr dut.rd_ptr
 dut.wr_valid dut.rd_valid
 ```
 
-> 最后更新：2026-09-12
+> 最后更新：2026-09-13

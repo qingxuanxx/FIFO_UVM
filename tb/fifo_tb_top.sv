@@ -13,6 +13,7 @@ module fifo_tb_top;
     `include "agents/fifo_item.sv"
     `include "agents/fifo_sequencer.sv"
     `include "agents/fifo_driver.sv"
+    `include "agents/fifo_monitor.sv"
     `include "agents/fifo_agent.sv"
     `include "seq/fifo_sequence.sv"
     `include "tests/fifo_test.sv"
