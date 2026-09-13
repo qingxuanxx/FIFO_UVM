@@ -4,7 +4,7 @@
 
 目前已完成 FIFO RTL、设计说明、验证计划、基础 testbench，以及 UVM interface、transaction、sequence、sequencer、driver、monitor 和 agent。UVM test 已能产生随机请求、驱动 DUT 并采样结果，下一步实现 scoreboard。
 
-基础 testbench 用于观察读写信号和波形；当前 UVM test 尚未加入 monitor、scoreboard 和自动数据比较。
+基础 testbench 用于观察读写信号和波形；当前 UVM test 尚未加入 scoreboard 和自动数据比较。
 
 - [设计说明（Spec）](doc/fifo_spec.md)：参数、接口、复位、读写操作和错误信号。
 - [验证计划（vPlan）](doc/verification_plan.md)：测试步骤、检查方法、覆盖率和回归通过条件。
@@ -78,7 +78,7 @@ FIFO_UVM/
 ├── tb/
 │   ├── fifo_if.sv                # 接口信号、driver 和 monitor 的 clocking block
 │   ├── fifo_tb_top.sv            # 时钟、复位、DUT 连接和 UVM 启动
-│   ├── agents/                   # item、sequencer、driver 和 agent
+│   ├── agents/                   # item、sequencer、driver、monitor 和 agent
 │   ├── env/                      # environment、scoreboard、coverage（待实现）
 │   ├── seq/                      # FIFO sequence
 │   ├── sva/                      # assertions（待实现）
