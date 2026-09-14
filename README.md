@@ -2,9 +2,9 @@
 
 这是一个同步 FIFO 设计与 UVM 验证学习项目。项目按照 Spec、RTL、基础 testbench、UVM 验证平台、覆盖率与回归的顺序逐步完成。
 
-目前已完成 FIFO RTL、设计说明、验证计划、基础 testbench，以及 UVM interface、transaction、sequence、sequencer、driver、monitor 和 agent。UVM test 已能产生随机请求、驱动 DUT 并采样结果，下一步实现 scoreboard。
+目前已完成 FIFO RTL、spec、vplan、基础 testbench，以及 UVM 的激励和采样链路。env 和 scoreboard 已能接收 monitor 的 sample，下一步实现 reference model 和自动比较。
 
-基础 testbench 用于观察读写信号和波形；当前 UVM test 尚未加入 scoreboard 和自动数据比较。
+基础 testbench 用于观察读写信号和波形；当前 UVM test 尚未加入 reference model 和自动数据比较。
 
 - [设计说明（Spec）](doc/fifo_spec.md)：参数、接口、复位、读写操作和错误信号。
 - [验证计划（vPlan）](doc/verification_plan.md)：测试步骤、检查方法、覆盖率和回归通过条件。
@@ -79,11 +79,11 @@ FIFO_UVM/
 │   ├── fifo_if.sv                # 接口信号、driver 和 monitor 的 clocking block
 │   ├── fifo_tb_top.sv            # 时钟、复位、DUT 连接和 UVM 启动
 │   ├── agents/                   # item、sequencer、driver、monitor 和 agent
-│   ├── env/                      # environment、scoreboard、coverage（待实现）
+│   ├── env/                      # env 和 scoreboard，reference model 待实现
 │   ├── seq/                      # FIFO sequence
 │   ├── sva/                      # assertions（待实现）
 │   └── tests/
-│       └── fifo_test.sv          # 创建 agent 并启动 sequence
+│       └── fifo_test.sv          # 创建 env 并启动 sequence
 └── sim/
     ├── Makefile                  # 编译和仿真入口（待完成）
     ├── filelist.f                # UVM 文件列表（待完成）
@@ -97,7 +97,8 @@ FIFO_UVM/
 - [x] UVM top 和 interface
 - [x] item、sequence、sequencer 和 driver
 - [x] monitor 和 agent
-- [ ] reference model、scoreboard 和 env
+- [x] scoreboard 接收链路和 env
+- [ ] reference model 和自动比较
 - [ ] 功能覆盖率和 SVA
 - [ ] 自动回归、补齐未覆盖用例，修改 RTL 检查测试能否发现错误
 
@@ -192,4 +193,4 @@ dut.wr_ptr dut.rd_ptr
 dut.wr_valid dut.rd_valid
 ```
 
-> 最后更新：2026-09-13
+> 最后更新：2026-09-14

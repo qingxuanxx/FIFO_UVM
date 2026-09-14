@@ -16,6 +16,10 @@ module fifo_tb_top;
     `include "agents/fifo_driver.sv"
     `include "agents/fifo_monitor.sv"
     `include "agents/fifo_agent.sv"
+
+    `include "env/fifo_scoreboard.sv"
+    `include "env/fifo_env.sv"
+
     `include "seq/fifo_sequence.sv"
     `include "tests/fifo_test.sv"
 

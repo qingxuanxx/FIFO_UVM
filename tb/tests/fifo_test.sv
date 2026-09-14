@@ -5,8 +5,11 @@ class fifo_test extends uvm_test;
     // 给 test 声明一个名叫 vif 的变量，用来引用数据宽度为 8 的 fifo_if 实例
     virtual fifo_if #(8) vif;
 
-    // 声明 agent
-    fifo_agent agent;
+    // // 声明 agent
+    // fifo_agent agent;
+
+    // 验证环境
+    fifo_env env;
 
     function new(string name = "fifo_test", uvm_component parent = null);
         super.new(name, parent);  // super 表示父类，这句调用父类的构造函数
@@ -27,8 +30,11 @@ class fifo_test extends uvm_test;
             `uvm_fatal("NO_VIF", "Cannot get FIFO interface")
         end
 
-        // 创建 agent
-        agent = fifo_agent::type_id::create("agent", this);
+        // // 创建 agent
+        // agent = fifo_agent::type_id::create("agent", this);
+
+        // env 会继续创建 agent 和 scoreboard
+        env = fifo_env::type_id::create("env", this);
 
     endfunction
 
@@ -48,8 +54,8 @@ class fifo_test extends uvm_test;
             // item = fifo_item::type_id::create("item");  // 现在 item 应该由 sequence 创建
             seq = fifo_sequence::type_id::create("seq");
 
-            // 在 agent 里面的 sequencer 上运行 seq 这个 sequence
-            seq.start(agent.sequencer);
+            // 在 env 内部 agent 的 sequencer 上运行 seq 这个 sequence
+            seq.start(env.agent.sequencer);
 
             `uvm_info("FIFO_TEST", "Sequence completed", UVM_LOW)
 
