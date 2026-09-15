@@ -32,60 +32,6 @@ depth = 16
 
 ## DUT 接口
 
-```mermaid
-flowchart LR
-    subgraph input_signals[ ]
-        direction TB
-        wr_en[wr_en]
-        wr_data[wr_data]
-        rd_en[rd_en]
-    end
-
-    subgraph fifo_with_control[ ]
-        direction TB
-
-        subgraph control_signals[ ]
-            direction LR
-            clk[clk]
-            rst[rst]
-        end
-
-        fifo["<br/><br/><br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;FIFO&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/><br/>width × depth<br/><br/><br/>"]
-
-        clk --> fifo
-        rst --> fifo
-    end
-
-    subgraph output_signals[ ]
-        direction TB
-        rd_data[rd_data]
-        full[full]
-        empty[empty]
-        wr_error[wr_error]
-        rd_error[rd_error]
-    end
-
-    wr_en --> fifo
-    wr_data --> fifo
-    rd_en --> fifo
-
-    fifo --> rd_data
-    fifo --> full
-    fifo --> empty
-    fifo --> wr_error
-    fifo --> rd_error
-
-    classDef signal fill:transparent,stroke:transparent,color:#111,font-size:18px;
-    classDef fifo_block fill:#fffdf2,stroke:#111,stroke-width:4px,color:#c00000,font-size:28px;
-
-    class clk,rst,wr_en,wr_data,rd_en,rd_data,full,empty,wr_error,rd_error signal;
-    class fifo fifo_block;
-    style input_signals fill:transparent,stroke:transparent
-    style fifo_with_control fill:transparent,stroke:transparent
-    style control_signals fill:transparent,stroke:transparent
-    style output_signals fill:transparent,stroke:transparent
-```
-
 | 信号 | 方向 | 位宽 | 说明 |
 |---|---|---:|---|
 | `clk` | input | 1 | FIFO 工作时钟 |
