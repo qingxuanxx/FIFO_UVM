@@ -17,6 +17,8 @@ module fifo_tb_top;
     `include "agents/fifo_monitor.sv"
     `include "agents/fifo_agent.sv"
 
+    `include "env/fifo_expected_item.sv"
+    `include "env/fifo_reference_model.sv"
     `include "env/fifo_scoreboard.sv"
     `include "env/fifo_env.sv"
 
@@ -50,7 +52,7 @@ module fifo_tb_top;
         .rd_data(vif.rd_data),
         .full(vif.full),
         .empty(vif.empty),
-        .wr_error(vif.wr_error), 
+        .wr_error(vif.wr_error),
         .rd_error(vif.rd_error)
     );
 
