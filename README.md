@@ -90,16 +90,6 @@ FIFO_UVM/
     └── regress.py                # 回归脚本（待完成）
 ```
 
-## 环境
-
-| 工具 | 版本 |
-| --- | --- |
-| VCS | V-2023.12-SP2 |
-| Verdi | V-2023.12-SP2 |
-| SCL | 2021.03 |
-| OS | Ubuntu 22.04.5 LTS，VMware 虚拟机 |
-| X Server | VcXsrv（Windows） |
-
 ## 当前进度
 
 - [x] spec 和 vplan
@@ -204,5 +194,15 @@ full empty
 dut.wr_ptr dut.rd_ptr
 dut.wr_valid dut.rd_valid
 ```
+
+## 环境
+
+| 工具 | 版本 |
+| --- | --- |
+| VCS | V-2023.12-SP2 |
+| Verdi | V-2023.12-SP2 |
+| SCL | 2021.03 |
+| OS | Ubuntu 22.04.5 LTS，VMware 虚拟机 |
+| X Server | VcXsrv（Windows） |
 
 > 最后更新：2026-09-15
