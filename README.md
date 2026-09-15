@@ -32,6 +32,10 @@ depth = 16
 
 ## DUT 接口
 
+<p align="center">
+  <img src="image/FIFO.drawio.png" alt="FIFO 信号图">
+</p>
+
 | 信号 | 方向 | 位宽 | 说明 |
 |---|---|---:|---|
 | `clk` | input | 1 | FIFO 工作时钟 |
@@ -71,6 +75,8 @@ FIFO_UVM/
 ├── doc/
 │   ├── fifo_spec.md              # FIFO 设计说明
 │   └── verification_plan.md      # FIFO 验证计划
+├── image/
+│   └── FIFO.drawio.png           # FIFO 信号图
 ├── rtl/
 │   └── fifo.v                    # FIFO RTL
 ├── smoke/
