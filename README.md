@@ -34,18 +34,29 @@ depth = 16
 
 ```mermaid
 flowchart LR
-    subgraph input_signals[输入信号]
+    subgraph input_signals[ ]
         direction TB
-        clk[clk]
-        rst[rst]
         wr_en[wr_en]
         wr_data[wr_data]
         rd_en[rd_en]
     end
 
-    fifo["FIFO<br/>width × depth"]
+    subgraph fifo_with_control[ ]
+        direction TB
 
-    subgraph output_signals[输出信号]
+        subgraph control_signals[ ]
+            direction LR
+            clk[clk]
+            rst[rst]
+        end
+
+        fifo["<br/><br/><br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;FIFO&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/><br/>width × depth<br/><br/><br/>"]
+
+        clk --> fifo
+        rst --> fifo
+    end
+
+    subgraph output_signals[ ]
         direction TB
         rd_data[rd_data]
         full[full]
@@ -54,8 +65,6 @@ flowchart LR
         rd_error[rd_error]
     end
 
-    clk --> fifo
-    rst --> fifo
     wr_en --> fifo
     wr_data --> fifo
     rd_en --> fifo
@@ -65,6 +74,16 @@ flowchart LR
     fifo --> empty
     fifo --> wr_error
     fifo --> rd_error
+
+    classDef signal fill:transparent,stroke:transparent,color:#111,font-size:18px;
+    classDef fifo_block fill:#fffdf2,stroke:#111,stroke-width:4px,color:#c00000,font-size:28px;
+
+    class clk,rst,wr_en,wr_data,rd_en,rd_data,full,empty,wr_error,rd_error signal;
+    class fifo fifo_block;
+    style input_signals fill:transparent,stroke:transparent
+    style fifo_with_control fill:transparent,stroke:transparent
+    style control_signals fill:transparent,stroke:transparent
+    style output_signals fill:transparent,stroke:transparent
 ```
 
 | 信号 | 方向 | 位宽 | 说明 |
