@@ -90,20 +90,15 @@ FIFO_UVM/
     └── regress.py                # 回归脚本（待完成）
 ```
 
-## UVM 验证环境
+## 环境
 
-```text
-fifo_test
-└── fifo_env
-    ├── fifo_agent
-    │   ├── fifo_sequencer
-    │   ├── fifo_driver
-    │   └── fifo_monitor
-    └── fifo_scoreboard
-        └── fifo_reference_model
-```
-
-sequence 通过 sequencer 和 driver 将读写请求发送到 DUT。monitor 采样接口上的请求和执行结果，并通过 analysis port 发送给 scoreboard；reference model 维护预期的 FIFO 状态，由 scoreboard 完成自动比较。
+| 工具 | 版本 |
+| --- | --- |
+| VCS | V-2023.12-SP2 |
+| Verdi | V-2023.12-SP2 |
+| SCL | 2021.03 |
+| OS | Ubuntu 22.04.5 LTS，VMware 虚拟机 |
+| X Server | VcXsrv（Windows） |
 
 ## 当前进度
 
