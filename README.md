@@ -32,6 +32,41 @@ depth = 16
 
 ## DUT 接口
 
+```mermaid
+flowchart LR
+    subgraph input_signals[输入信号]
+        direction TB
+        clk[clk]
+        rst[rst]
+        wr_en[wr_en]
+        wr_data[wr_data]
+        rd_en[rd_en]
+    end
+
+    fifo["FIFO<br/>width × depth"]
+
+    subgraph output_signals[输出信号]
+        direction TB
+        rd_data[rd_data]
+        full[full]
+        empty[empty]
+        wr_error[wr_error]
+        rd_error[rd_error]
+    end
+
+    clk --> fifo
+    rst --> fifo
+    wr_en --> fifo
+    wr_data --> fifo
+    rd_en --> fifo
+
+    fifo --> rd_data
+    fifo --> full
+    fifo --> empty
+    fifo --> wr_error
+    fifo --> rd_error
+```
+
 | 信号 | 方向 | 位宽 | 说明 |
 |---|---|---:|---|
 | `clk` | input | 1 | FIFO 工作时钟 |
