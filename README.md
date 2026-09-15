@@ -90,6 +90,21 @@ FIFO_UVM/
     └── regress.py                # 回归脚本（待完成）
 ```
 
+## UVM 验证环境
+
+```text
+fifo_test
+└── fifo_env
+    ├── fifo_agent
+    │   ├── fifo_sequencer
+    │   ├── fifo_driver
+    │   └── fifo_monitor
+    └── fifo_scoreboard
+        └── fifo_reference_model
+```
+
+sequence 通过 sequencer 和 driver 将读写请求发送到 DUT。monitor 采样接口上的请求和执行结果，并通过 analysis port 发送给 scoreboard；reference model 维护预期的 FIFO 状态，由 scoreboard 完成自动比较。
+
 ## 当前进度
 
 - [x] spec 和 vplan
@@ -97,11 +112,12 @@ FIFO_UVM/
 - [x] UVM top 和 interface
 - [x] item、sequence、sequencer 和 driver
 - [x] monitor 和 agent
-- [x] scoreboard 接收链路和 env
-- [x] reference model 和自动比较
-- [ ] 按照 vPlan 编写测试激励
+- [x] env、reference model 和 scoreboard
+- [ ] vPlan 定向测试用例
+- [ ] 约束随机和参数测试
 - [ ] 功能覆盖率和 SVA
-- [ ] 自动回归、补齐未覆盖用例，修改 RTL 检查测试能否发现错误
+- [ ] 自动回归和覆盖率收敛
+- [ ] 错误注入和验证收尾
 
 ## 编译和运行 UVM 测试
 
