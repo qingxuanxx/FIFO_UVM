@@ -58,8 +58,8 @@ monitor 需要分清上升沿之前的状态和上升沿之后的结果：
 当前 `fifo_reference_model` 已使用 SystemVerilog queue 保存成功写入、尚未读出的数据，`fifo_expected_item` 返回预期结果，scoreboard 负责比较。当前模型固定为 8 位、深度 16；参数化后的数据声明可表示为：
 
 ```systemverilog
-logic [width-1:0] expected_q[$];
-logic [width-1:0] expected_rd_data;
+bit [width-1:0] expected_q[$];
+bit [width-1:0] expected_rd_data;
 ```
 
 用队列长度判断本拍读写应该成功还是失败，不能直接使用 DUT 的 `full/empty` 做决定，否则 DUT 标志出错时，模型也可能跟着出错。
@@ -104,8 +104,6 @@ logic [width-1:0] expected_rd_data;
 | `tc_reset` | 4 | 检查初始复位、空时及有数据时复位；在非时钟沿拉高复位，包含完全位于两个上升沿之间的短脉冲；分别在少量数据、已满、读输出非零、两类错误信号有效时复位；保持复位时施加四种读写组合，检查复位值保持；释放后重新写读，确认旧数据作废 |
 | `tc_random` | 4–10 | 每个 seed 至少运行 1000 拍，包含四种读写组合、连续偏写、连续偏读和运行中复位，结束时读完剩余数据 |
 | `tc_param_invalid` | 2 | 分别设置非法参数，检查是否因对应参数错误而停止编译或仿真 |
-
-原 `tc_fill_to_full`、`tc_drain_to_empty` 合入 `tc_burst`；`tc_overflow`、`tc_underflow`、`tc_error_burst` 合入 `tc_overflow_underflow`；`tc_empty_wr_rd`、`tc_full_wr_rd` 合入 `tc_simultaneous`；`tc_reset_request`、`tc_mid_reset` 合入 `tc_reset`。合并只改变用例组织方式，检查内容仍需逐项完成。
 
 连续操作指相邻时钟周期都产生请求，不能用中间插有空闲拍的请求代替。
 
@@ -189,7 +187,7 @@ logic [width-1:0] expected_rd_data;
 
 ## 9. 故意修改 RTL，检查测试能否发现错误
 
-在 RTL 副本上每次只修改一处，先确认原始版本通过，再运行修改后的版本。普通功能错误应由数据比较或断言发现，编译失败和超时不算发现了功能错误。删除参数合法性检查这一项，单独由非法参数测试判断。
+在 RTL 副本上每次只修改一处，先确认原始版本通过，再运行修改后的版本。普通功能错误应由数据比较或断言发现，编译失败和超时不算发现了功能错误。参数检查相关的错误注入由 `tc_param_invalid` 判断。
 
 先验证读错地址、错误信号计算错误和复位未清指针三类修改，跑通执行与报错记录流程，再补齐下表其余项目。
 

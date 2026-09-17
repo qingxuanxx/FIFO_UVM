@@ -1,13 +1,13 @@
 # FIFO UVM Verification Project
 
-这是一个同步 FIFO 设计与 UVM 验证学习项目。项目按照 Spec、RTL、基础 testbench、UVM 验证平台、覆盖率与回归的顺序逐步完成。
+这是一个同步 FIFO 设计与 UVM 验证学习项目。项目按照 spec、RTL、基础 testbench、UVM 验证平台、覆盖率与回归的顺序逐步完成。
 
-目前已完成 FIFO RTL、spec、vplan、基础 testbench，以及 UVM 的激励、采样、reference model 和自动比较。下一步按照 vPlan 编写测试激励。
+目前已完成 FIFO RTL、spec、vplan、基础 testbench，以及 UVM 的激励、采样、reference model 和自动比较。下一步按照 vplan 编写测试激励。
 
 基础 testbench 用于观察读写信号和波形；当前 UVM test 已能自动比较 DUT 与 reference model 的结果，尚未覆盖完整的读写场景。
 
-- [设计说明（Spec）](doc/fifo_spec.md)：参数、接口、复位、读写操作和错误信号。
-- [验证计划（vPlan）](doc/verification_plan.md)：测试步骤、检查方法、覆盖率和回归通过条件。
+- [spec](doc/fifo_spec.md)：参数、接口、复位、读写操作和错误信号。
+- [vplan](doc/verification_plan.md)：测试步骤、检查方法、覆盖率和回归通过条件。
 
 ## DUT 设计说明
 
@@ -104,7 +104,7 @@ FIFO_UVM/
 - [x] item、sequence、sequencer 和 driver
 - [x] monitor 和 agent
 - [x] env、reference model 和 scoreboard
-- [ ] vPlan 定向测试用例
+- [ ] vplan 定向测试用例
 - [ ] 约束随机和参数测试
 - [ ] 功能覆盖率和 SVA
 - [ ] 自动回归和覆盖率收敛
@@ -211,4 +211,4 @@ dut.wr_valid dut.rd_valid
 | OS | Ubuntu 22.04.5 LTS，VMware 虚拟机 |
 | X Server | VcXsrv（Windows） |
 
-> 最后更新：2026-09-15
+> 最后更新：2026-09-17
