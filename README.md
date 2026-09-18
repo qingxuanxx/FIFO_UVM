@@ -110,7 +110,7 @@ FIFO_UVM/
 - [ ] 自动回归和覆盖率收敛
 - [ ] 错误注入和验证收尾
 
-## 编译和运行 UVM 测试
+## 运行 UVM 测试
 
 安装并配置好 VCS 后，在项目根目录执行：
 
@@ -123,83 +123,12 @@ vcs -full64 -sverilog -ntb_opts uvm \
     tb/fifo_if.sv \
     tb/fifo_tb_top.sv \
     -top fifo_tb_top \
-    -o simv_if \
-    -l compile.log
+    -o simv_if
+
+./simv_if
 ```
 
-编译成功后运行：
-
-```bash
-./simv_if -l sim.log
-```
-
-- `-ntb_opts uvm`：加载 VCS 提供的 UVM 库。
-- `-timescale=1ns/1ps`：为未显式声明时间尺度的设计单元提供默认值。
-- `+incdir+tb`：指定 include 文件的查找目录。top 已包含 `tests/fifo_test.sv`，不需要在命令中再次列出它。
-- `-top fifo_tb_top`：使用 UVM 仿真顶层。
-- `-l`：保存编译或仿真日志。
-
-正常运行时应看到 `FIFO interface obtained`、`FIFO_DRIVER`、`Sequence completed` 和 `Test completed`，并检查 UVM 汇总中的错误数量。当前 test 的 virtual interface 固定为 8 位，与 top 的默认 `width=8` 对应；后续做参数测试前，需要统一 test 和 top 的位宽配置。
-
-## 编译和运行普通 smoke 测试
-
-安装并配置好 VCS 后，在项目根目录执行。当前 `sim/Makefile` 和回归脚本还未实现，先直接编译基础 testbench：
-
-```bash
-vcs -full64 -sverilog -kdb -debug_access+all \
-    rtl/fifo.v \
-    smoke/fifo_tb.sv \
-    -top fifo_tb \
-    -o simv
-```
-
-参数说明：
-
-- `-full64`：使用 64 位模式；
-- `-sverilog`：按 SystemVerilog 语法编译；
-- `-kdb`：生成 Verdi 使用的设计数据库；
-- `-debug_access+all`：允许查看 DUT 内部信号；
-- `-top fifo_tb`：指定 testbench 顶层模块；
-- `-o simv`：生成名为 `simv` 的仿真程序。
-
-运行仿真：
-
-```bash
-./simv
-```
-
-仿真完成后会生成 `fifo_tb.vcd`。当前 smoke test 包含：
-
-- 异步复位；
-- 空状态读取和 `rd_error`；
-- 连续写满 FIFO；
-- 满状态写入和 `wr_error`；
-- 非空非满状态下同时读写；
-- 随机读写；
-- 最终清空 FIFO。
-
-## 使用 Verdi 查看波形
-
-以下命令查看普通 smoke 测试产生的 `fifo_tb.vcd`。当前 UVM top 尚未添加波形输出代码。如果 Verdi 运行在 Linux、界面显示到 Windows，需要先在 Windows 启动 XLaunch/VcXsrv，然后执行：
-
-```bash
-verdi -sv \
-    rtl/fifo.v \
-    smoke/fifo_tb.sv \
-    -top fifo_tb \
-    -ssf fifo_tb.vcd &
-```
-
-建议观察以下信号：
-
-```text
-clk rst
-wr_en wr_data wr_error
-rd_en rd_data rd_error
-full empty
-dut.wr_ptr dut.rd_ptr
-dut.wr_valid dut.rd_valid
-```
+当前 UVM test 能运行基本激励，并由 scoreboard 比较 DUT 与 reference model 的结果。smoke 测试和 Verdi 波形用于辅助观察，具体命令不在 README 中展开。
 
 ## 环境
 
