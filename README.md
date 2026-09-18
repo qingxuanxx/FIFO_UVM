@@ -33,7 +33,7 @@ depth = 16
 ## DUT 接口
 
 <p align="center">
-  <img src="image/FIFO.drawio.png" alt="FIFO 信号图">
+  <img src="doc/images/fifo_interface_diagram.png" alt="FIFO 信号图">
 </p>
 
 | 信号 | 方向 | 位宽 | 说明 |
@@ -75,8 +75,8 @@ FIFO_UVM/
 ├── doc/
 │   ├── fifo_spec.md              # FIFO 设计说明
 │   └── verification_plan.md      # FIFO 验证计划
-├── image/
-│   └── FIFO.drawio.png           # FIFO 信号图
+├── doc/images/
+│   └── fifo_interface_diagram.png # FIFO 信号图
 ├── rtl/
 │   └── fifo.v                    # FIFO RTL
 ├── smoke/
@@ -211,4 +211,4 @@ dut.wr_valid dut.rd_valid
 | OS | Ubuntu 22.04.5 LTS，VMware 虚拟机 |
 | X Server | VcXsrv（Windows） |
 
-> 最后更新：2026-09-17
+> 最后更新：2026-09-18
