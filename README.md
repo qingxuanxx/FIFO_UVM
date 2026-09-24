@@ -140,4 +140,4 @@ vcs -full64 -sverilog -ntb_opts uvm \
 | OS | Ubuntu 22.04.5 LTS，VMware 虚拟机 |
 | X Server | VcXsrv（Windows） |
 
-> 最后更新：2026-09-18
+> 最后更新：2026-09-24
