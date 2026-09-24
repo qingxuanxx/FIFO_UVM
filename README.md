@@ -2,9 +2,7 @@
 
 这是一个同步 FIFO 设计与 UVM 验证学习项目。项目按照 spec、RTL、基础 testbench、UVM 验证平台、覆盖率与回归的顺序逐步完成。
 
-目前已完成 FIFO RTL、spec、vplan、基础 testbench，以及 UVM 的激励、采样、reference model 和自动比较。下一步按照 vplan 编写测试激励。
-
-基础 testbench 用于观察读写信号和波形；当前 UVM test 已能自动比较 DUT 与 reference model 的结果，尚未覆盖完整的读写场景。
+目前已完成 FIFO RTL、spec、vplan、基础 testbench，以及 UVM 验证平台的基本结构。`fifo_single_wr_rd_test` 和 `fifo_burst_test` 已通过仿真；其余 vplan 用例仍待完成。
 
 - [spec](doc/fifo_spec.md)：参数、接口、复位、读写操作和错误信号。
 - [vplan](doc/verification_plan.md)：测试步骤、检查方法、覆盖率和回归通过条件。
@@ -86,10 +84,12 @@ FIFO_UVM/
 │   ├── fifo_tb_top.sv            # 时钟、复位、DUT 连接和 UVM 启动
 │   ├── agents/                   # item、sequencer、driver、monitor 和 agent
 │   ├── env/                      # env、reference model 和 scoreboard
-│   ├── seq/                      # FIFO sequence
+│   ├── seq/                      # 通用和定向 sequence
 │   ├── sva/                      # assertions（待实现）
 │   └── tests/
-│       └── fifo_test.sv          # 创建 env 并启动 sequence
+│       ├── fifo_base_test.sv
+│       ├── fifo_single_wr_rd_test.sv
+│       └── fifo_burst_test.sv
 └── sim/
     ├── Makefile                  # 编译和仿真入口（待完成）
     ├── filelist.f                # UVM 文件列表（待完成）
@@ -125,7 +125,8 @@ vcs -full64 -sverilog -ntb_opts uvm \
     -top fifo_tb_top \
     -o simv_if
 
-./simv_if
+./simv_if +UVM_TESTNAME=fifo_single_wr_rd_test
+./simv_if +UVM_TESTNAME=fifo_burst_test
 ```
 
 当前 UVM test 能运行基本激励，并由 scoreboard 比较 DUT 与 reference model 的结果。smoke 测试和 Verdi 波形用于辅助观察，具体命令不在 README 中展开。

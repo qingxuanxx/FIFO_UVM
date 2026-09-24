@@ -22,8 +22,12 @@ module fifo_tb_top;
     `include "env/fifo_scoreboard.sv"
     `include "env/fifo_env.sv"
 
-    `include "seq/fifo_sequence.sv"
-    `include "tests/fifo_test.sv"
+    `include "seq/fifo_base_sequence.sv"
+    `include "seq/fifo_single_wr_rd_sequence.sv"
+    `include "seq/fifo_burst_sequence.sv"
+    `include "tests/fifo_base_test.sv"
+    `include "tests/fifo_single_wr_rd_test.sv"
+    `include "tests/fifo_burst_test.sv"
 
     parameter int width = 8;
     parameter int depth = 16;
@@ -90,8 +94,7 @@ module fifo_tb_top;
             vif  // 要存入的实际值，也是在 top 中实例化的 interface 名字
         );
 
-        // 创建并启动 fifo_test
-        run_test("fifo_test");
+        run_test();
 
     end
 

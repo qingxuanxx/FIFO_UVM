@@ -48,13 +48,16 @@ class fifo_driver extends uvm_driver #(fifo_item);
             // 打印 driver 实际收到的 item
             `uvm_info("FIFO_DRIVER", item.convert2string(), UVM_LOW)
 
-            // 等待下一个下降沿，让请求保持一个完整周期
-            @(vif.drv_cb);
+            // // 等待下一个下降沿，让请求保持一个完整周期
+            // @(vif.drv_cb);
 
-            // 这一笔请求结束，置0
-            vif.drv_cb.wr_en <= 1'b0;
-            vif.drv_cb.wr_data <= '0;
-            vif.drv_cb.rd_en <= 1'b0;
+            // // 这一笔请求结束，置0
+            // vif.drv_cb.wr_en <= 1'b0;
+            // vif.drv_cb.wr_data <= '0;
+            // vif.drv_cb.rd_en <= 1'b0;
+
+            // 等 monitor 对应的上升沿采样事件
+            @(vif.mon_cb);
 
             // 告诉 sequencer：这个 item 已经处理完成
             seq_item_port.item_done();
