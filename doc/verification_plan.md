@@ -4,9 +4,9 @@
 
 验证对象为 [`rtl/fifo.v`](../rtl/fifo.v)，预期行为见 [FIFO 设计说明](fifo_spec.md)。重点检查数据顺序、空满判断、同时读写、错误信号、复位和指针回卷。
 
-已完成 RTL、基础 smoke 测试，以及 UVM interface、top、item、sequence、sequencer、driver、monitor、agent、env、独立 reference model 和 scoreboard 的基本实现。当前 `fifo_test` 发送单笔随机请求，monitor 逐拍采样，scoreboard 自动比较读数据、空满标志和错误信号。
+已完成 RTL、基础 smoke 测试，以及 UVM interface、top、item、sequence、sequencer、driver、monitor、agent、env、独立 reference model 和 scoreboard 的基本实现。默认 `(width, depth)=(8,16)` 下，`fifo_single_wr_rd_test`、`fifo_burst_test`、`fifo_overflow_underflow_test` 和 `fifo_simultaneous_test` 的本地仿真日志均显示 scoreboard 无 mismatch，UVM 无 warning、error 或 fatal。
 
-目前跑通的是基本验证链路，尚未完成本文的完整用例。定向测试、功能覆盖率、SVA、参数测试和自动回归待实现。smoke 测试主要用于产生激励和查看波形，不作为完整功能验证通过的依据。
+这些是定向用例的初版，不能据此认为对应章节的所有检查点都已完成。指针回卷、运行中复位、约束随机、参数测试、功能覆盖率、SVA 和自动回归仍待实现或补齐。smoke 测试主要用于产生激励和查看波形，不作为完整功能验证通过的依据。
 
 ## 2. 验证平台
 
@@ -89,9 +89,9 @@ bit [width-1:0] expected_rd_data;
 
 ## 4. 测试用例
 
-以下 9 个用例分别运行、记录结果。其中 7 个为定向功能用例，`tc_random` 为随机用例，`tc_param_invalid` 为非法参数用例。
+以下 8 个用例分别运行、记录结果。其中 6 个为定向功能用例，`tc_random` 为随机用例，`tc_param_invalid` 为非法参数用例。
 
-前 8 个用例分别实现为独立的 UVM test，继承 `fifo_base_test`，复用同一套 env、reference model 和 scoreboard。test 负责配置和启动 sequence，sequence 负责产生请求；复位由统一任务或组件驱动。每个用例可以包含多个子场景，日志需标明子场景名称。
+前 7 个用例分别实现为独立的 UVM test，继承 `fifo_base_test`，复用同一套 env、reference model 和 scoreboard。test 负责配置和启动 sequence，sequence 负责产生请求；复位由统一任务或组件驱动。每个用例可以包含多个子场景，日志需标明子场景名称。
 
 test 类按 `fifo_<用例名去掉 tc_>_test` 命名，例如 `tc_single_wr_rd` 对应 `fifo_single_wr_rd_test`。通过 `+UVM_TESTNAME` 选择运行的 test。
 
@@ -104,7 +104,6 @@ scoreboard 比较读数据、空满标志和错误信号，SVA 检查内部指�
 | `tc_single_wr_rd` | 5–7 | 1. 从空状态写入一个非零数据，再读取，检查数据一致、写后非空、读后为空。<br>2. 使用零值重复写读，检查数据和空满标志。<br>3. 两个子场景中的读写均应成功，错误信号为 0。 |
 | `tc_burst` | 5–7 | 1. 分别连续写入 1、`depth-1`、`depth` 个数据，再连续读出，检查顺序和每拍读写能力。<br>2. 从空写满时，恰好第 `depth` 次写入后置满，之前不得提前置满。<br>3. 从满读空时，检查最后一个数据正确且读出后置空。 |
 | `tc_overflow_underflow` | 5–7、9、10 | 1. 写满后连续满写至少 3 拍不同数据，检查 `wr_error=1`、写指针保持；随后读完，确认原数据未被覆盖。<br>2. 读出非零值并读空后，连续空读至少 3 拍，检查 `rd_error=1`、读指针和读输出保持。<br>3. 分别制造单拍和多拍错误，停止请求或执行合法操作后，检查对应错误信号及时清零。<br>4. 满但不写、空但不读时，不应报告对应错误。 |
-| `tc_read_timing` | 6 | 1. 成功读取非零值，检查 `rd_data` 在本次上升沿后更新。<br>2. 在读输出非零的前提下，分别执行空闲、只写、空读，检查输出保持；空读前先确保 FIFO 已空。 |
 | `tc_simultaneous` | 8 | 1. 非空非满：分别保留 1 个和 `depth-1` 个数据，连续同拍读写至少 `2*depth` 拍，检查读出旧数据、数量不变、无错误；重复配置只测一次。<br>2. 空：同拍读写仅写入成功，`rd_data` 保持，`rd_error=1`、`wr_error=0`；随后读出新写入的数据。<br>3. 满：同拍读写仅读取成功，`full` 清零，`wr_error=1`、`rd_error=0`；随后读完，确认被拒绝的写数据没有进入 FIFO。 |
 | `tc_wraparound` | 10 | 1. 初始复位后不再复位，成功写和成功读各至少 `6*depth` 次。<br>2. 检查读写地址回卷和完整指针回卷，两个完整指针分别回卷至少 3 次。<br>3. 持续比较数据顺序，检查无丢失、重复或覆盖。 |
 | `tc_reset` | 4 | 1. 检查初始复位和空时复位后的指针、读输出、空满及错误信号。<br>2. 分别在少量数据、已满、读输出非零、写错误有效、读错误有效时复位，检查复位值。<br>3. 在非时钟沿拉高复位，包含完全位于两个上升沿之间的短复位脉冲，检查异步复位生效。<br>4. 保持复位时施加四种读写组合，检查状态保持复位值。<br>5. 释放复位后重新写读，确认恢复正常且旧数据作废。 |
@@ -202,7 +201,7 @@ scoreboard 比较读数据、空满标志和错误信号，SVA 检查内部指�
 | full 判断删掉最高位比较 | `tc_burst` 的写满和读空子场景 |
 | 满写时仍移动写指针 | `tc_overflow_underflow`、指针断言 |
 | 满写时仍写 RAM | `tc_overflow_underflow` 的满写后读完并比较 |
-| 空读时清零 rd_data | `tc_overflow_underflow`、`tc_read_timing` |
+| 空读时清零 rd_data | `tc_overflow_underflow` |
 | 读取下一个地址 | `tc_single_wr_rd`、`tc_burst` |
 | wr_error 直接等于 full | `tc_overflow_underflow` 的满但不写子场景 |
 | rd_error 直接等于 empty | `tc_overflow_underflow` 的空但不读子场景 |

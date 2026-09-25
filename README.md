@@ -2,7 +2,7 @@
 
 这是一个同步 FIFO 设计与 UVM 验证学习项目。项目按照 spec、RTL、基础 testbench、UVM 验证平台、覆盖率与回归的顺序逐步完成。
 
-目前已完成 FIFO RTL、spec、vplan、基础 testbench，以及 UVM 验证平台的基本结构。`fifo_single_wr_rd_test` 和 `fifo_burst_test` 已通过仿真；其余 vplan 用例仍待完成。
+已完成 FIFO RTL、spec、vplan、基础 testbench 和 UVM 验证平台。默认配置下，`fifo_single_wr_rd_test`、`fifo_burst_test`、`fifo_overflow_underflow_test` 和 `fifo_simultaneous_test` 的本地仿真日志均显示 scoreboard 无 mismatch，UVM 无 warning、error 或 fatal。回卷、运行中复位及后续覆盖率和回归工作仍待完成。
 
 - [spec](doc/fifo_spec.md)：参数、接口、复位、读写操作和错误信号。
 - [vplan](doc/verification_plan.md)：测试步骤、检查方法、覆盖率和回归通过条件。
@@ -89,7 +89,9 @@ FIFO_UVM/
 │   └── tests/
 │       ├── fifo_base_test.sv
 │       ├── fifo_single_wr_rd_test.sv
-│       └── fifo_burst_test.sv
+│       ├── fifo_burst_test.sv
+│       ├── fifo_overflow_underflow_test.sv
+│       └── fifo_simultaneous_test.sv
 └── sim/
     ├── Makefile                  # 编译和仿真入口（待完成）
     ├── filelist.f                # UVM 文件列表（待完成）
@@ -104,7 +106,8 @@ FIFO_UVM/
 - [x] item、sequence、sequencer 和 driver
 - [x] monitor 和 agent
 - [x] env、reference model 和 scoreboard
-- [ ] vplan 定向测试用例
+- [x] 初版定向测试：单笔读写、burst、overflow/underflow、同时读写
+- [ ] 指针回卷和运行中复位测试
 - [ ] 约束随机和参数测试
 - [ ] 功能覆盖率和 SVA
 - [ ] 自动回归和覆盖率收敛
@@ -127,9 +130,11 @@ vcs -full64 -sverilog -ntb_opts uvm \
 
 ./simv_if +UVM_TESTNAME=fifo_single_wr_rd_test
 ./simv_if +UVM_TESTNAME=fifo_burst_test
+./simv_if +UVM_TESTNAME=fifo_overflow_underflow_test
+./simv_if +UVM_TESTNAME=fifo_simultaneous_test
 ```
 
-当前 UVM test 能运行基本激励，并由 scoreboard 比较 DUT 与 reference model 的结果。smoke 测试和 Verdi 波形用于辅助观察，具体命令不在 README 中展开。
+这些定向测试由 scoreboard 比较 DUT 与 reference model 的结果。smoke 测试和 Verdi 波形用于辅助观察，具体命令不在 README 中展开。
 
 ## 环境
 
@@ -141,4 +146,4 @@ vcs -full64 -sverilog -ntb_opts uvm \
 | OS | Ubuntu 22.04.5 LTS，VMware 虚拟机 |
 | X Server | VcXsrv（Windows） |
 
-> 最后更新：2026-09-24
+> 最后更新：2026-09-25

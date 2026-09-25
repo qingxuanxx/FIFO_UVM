@@ -25,9 +25,13 @@ module fifo_tb_top;
     `include "seq/fifo_base_sequence.sv"
     `include "seq/fifo_single_wr_rd_sequence.sv"
     `include "seq/fifo_burst_sequence.sv"
+    `include "seq/fifo_overflow_underflow_sequence.sv"
+    `include "seq/fifo_simultaneous_sequence.sv"
     `include "tests/fifo_base_test.sv"
     `include "tests/fifo_single_wr_rd_test.sv"
     `include "tests/fifo_burst_test.sv"
+    `include "tests/fifo_overflow_underflow_test.sv"
+    `include "tests/fifo_simultaneous_test.sv"
 
     parameter int width = 8;
     parameter int depth = 16;

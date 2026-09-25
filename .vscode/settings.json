@@ -1,0 +1,14 @@
+{
+    "editor.quickSuggestions": {
+        "comments": "off",
+        "strings": "off",
+        "other": "off"
+    },
+    "editor.suggestOnTriggerCharacters": false,
+    "editor.inlineSuggest.enabled": false,
+    "editor.suggest.preview": false,
+    "editor.tabCompletion": "off",
+    "verilog.linting.iverilog.includePath": [
+        "/opt/synopsys/vcs/V-2023.12-SP2/etc/uvm-1.2/src"
+    ]
+}
