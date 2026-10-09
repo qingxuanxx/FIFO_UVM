@@ -28,6 +28,12 @@ class fifo_overflow_underflow_sequence extends fifo_base_sequence;
         `uvm_info("TC_OVERFLOW_UNDERFLOW", "Fill FIFO", UVM_LOW)
         for (i = 0; i < fifo_depth; i++) begin
             wr_data = i + 1;
+
+            // 保证最后读出的数据非零，让后续空读能检查输出保持
+            if (i == fifo_depth - 1) begin
+                wr_data = '1;
+            end
+
             send_fifo_request(1'b1, 1'b0, wr_data); // 只写不读
         end
 
