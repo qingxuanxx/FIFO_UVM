@@ -8,7 +8,7 @@ class fifo_overflow_underflow_sequence extends fifo_base_sequence;
     `uvm_object_utils(fifo_overflow_underflow_sequence)
 
     // 与 DUT 及 reference model 保持一致的 FIFO 深度
-    localparam int unsigned fifo_depth = 16;
+    localparam int unsigned fifo_depth = DEPTH;
 
     // 溢出/下溢测试的连续错误拍数
     localparam int unsigned error_cycles = 3;
@@ -19,11 +19,11 @@ class fifo_overflow_underflow_sequence extends fifo_base_sequence;
 
     task body();
         int unsigned i;
-        bit [7:0] wr_data;
+        bit [DATA_WIDTH-1:0] wr_data;
 
         // -----------------------------------------------------------------
         // 阶段 1：填充 FIFO
-        // 连续写入 16 个数据，把 FIFO 精确写满
+        // 连续写入 fifo_depth 个数据，把 FIFO 精确写满
         // -----------------------------------------------------------------
         `uvm_info("TC_OVERFLOW_UNDERFLOW", "Fill FIFO", UVM_LOW)
         for (i = 0; i < fifo_depth; i++) begin

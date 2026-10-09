@@ -6,7 +6,7 @@
 
 已完成 RTL、基础 smoke 测试，以及 UVM interface、top、item、sequence、sequencer、driver、monitor、agent、env、独立 reference model 和 scoreboard 的基本实现。默认 `(width, depth)=(8,16)` 下，五组定向测试和 `tc_random` 的 seed=1、2、3 均通过仿真，scoreboard 无 mismatch，UVM warning/error/fatal 均为 0。初始复位输出已加入 scoreboard 比较。
 
-当前范围的定向激励和默认配置约束随机测试已完成。合法与非法参数测试、功能覆盖率、SVA 和自动回归待实现；运行中复位和短复位脉冲本轮跳过。
+当前范围的定向激励和默认配置约束随机测试已完成。参数已统一，首批合法配置测试已通过，具体范围见第 7 节。下一阶段实现功能覆盖率和 SVA；其余参数配置、随机 seeds、非法参数检查及自动回归待完成；运行中复位和短复位脉冲本轮跳过。
 
 ## 2. 验证平台
 
@@ -36,7 +36,7 @@ sequence -> sequencer -> driver -> fifo_if <-> DUT
 
 env 创建 agent 和 scoreboard，并连接采样输出。coverage 和 SVA 尚未加入；coverage 后续结合 monitor 记录与模型状态采样，SVA 检查接口和内部指针。
 
-本轮仅使用 top 产生的初始复位。恢复运行中复位测试前，需要统一复位驱动，并补充异步复位事件处理。参数测试前，所有需要位宽或深度的组件与 DUT 使用同一组配置。
+本轮仅使用 top 产生的初始复位。恢复运行中复位测试前，需要统一复位驱动，并补充异步复位事件处理。DUT、interface、transaction、模型和 sequence 已通过 `fifo_config_pkg` 使用同一组位宽和深度配置。
 
 ### 2.1 采样时间
 
@@ -55,11 +55,11 @@ monitor 需要分清上升沿之前的状态和上升沿之后的结果：
 
 ## 3. 参考模型和 scoreboard
 
-当前 `fifo_reference_model` 已使用 SystemVerilog queue 保存成功写入、尚未读出的数据，`fifo_expected_item` 返回预期结果，scoreboard 负责比较。当前模型固定为 8 位、深度 16；参数化后的数据声明可表示为：
+当前 `fifo_reference_model` 已使用 SystemVerilog queue 保存成功写入、尚未读出的数据，`fifo_expected_item` 返回预期结果，scoreboard 负责比较。模型位宽使用 `fifo_config_pkg::DATA_WIDTH`，深度使用 `fifo_config_pkg::DEPTH`；数据声明如下：
 
 ```systemverilog
-bit [width-1:0] expected_q[$];
-bit [width-1:0] expected_rd_data;
+bit [DATA_WIDTH-1:0] model_q[$];
+bit [DATA_WIDTH-1:0] held_rd_data;
 ```
 
 用队列长度判断本拍读写应该成功还是失败，不能直接使用 DUT 的 `full/empty` 做决定，否则 DUT 标志出错时，模型也可能跟着出错。
@@ -153,11 +153,19 @@ scoreboard 比较读数据、空满标志和错误信号，SVA 检查内部指�
 
 ## 7. 参数测试
 
-参数测试分阶段开展：
+编译时通过 `+define+FIFO_WIDTH=<位宽>` 和 `+define+FIFO_DEPTH=<深度>` 配置，默认值为 8 和 16。`tb/fifo_config_pkg.sv` 先于 interface 和 top 编译；每次修改配置后重新编译。仿真日志中的 `FIFO_CONFIG` 用于确认实际参数。
 
-1. 默认 `(width, depth)=(8,16)` 的当前范围定向用例和随机 seed=1、2、3 已通过。验证环境仍有固定 8 位和深度 16 的声明，尚不能据此认定其他参数配置通过。
-2. 参数配置统一后，先增加 `(8,2)`、`(1,16)`、`(32,16)`，检查最小深度、单 bit 和宽数据。
-3. 完整回归覆盖下表全部配置。每组运行全部定向用例，随机测试按表中 seed 数作为起始目标；根据覆盖率和失败情况继续补充，不以 seed 数量代替功能检查。
+当前已验证范围如下，均正常结束、scoreboard 无 mismatch，UVM warning/error/fatal 均为 0：
+
+| width | depth | 已通过的测试 |
+|---:|---:|---|
+| 8 | 16 | 五组定向用例；随机 seed=1、2、3；参数统一后另以 seed=1 复测随机用例 |
+| 8 | 2 | 五组定向用例；随机 seed=1 |
+| 32 | 16 | 随机 seed=1、2、3 |
+| 1 | 2 | 随机 seed=1、2、3 |
+| 8 | 32 | `tc_burst`、`tc_wraparound`；随机 seed=1、2、3 |
+
+首批合法配置测试完成，进入功能覆盖率和 SVA 阶段。以下完整回归目标仍保留：每组运行全部当前范围定向用例，随机测试按表中 seed 数作为起始目标；根据覆盖率和失败情况继续补充。尚未运行的用例和配置不计为通过，seed 数量也不能代替功能覆盖检查。
 
 | width | depth | 测试目的 | 完整回归随机 seed 数 |
 |---:|---:|---|---:|
@@ -218,6 +226,7 @@ scoreboard 比较读数据、空满标志和错误信号，SVA 检查内部指�
 - 基本链路跑通：请求经过 driver 驱动，monitor 发送采样，reference model 和 scoreboard 执行比较。已完成。
 - 当前范围定向激励阶段完成：默认配置下五组功能用例和初始复位输出检查通过。已完成；运行中复位本轮跳过，内部指针直接检查仍待 SVA，不能据此宣称完整验证完成。
 - 默认配置约束随机测试完成：1000 拍混合、偏写和偏读请求，收尾确认参考队列为空；seed=1、2、3 已通过。多参数、多 seed 完整回归和覆盖率收敛仍待完成。
+- 参数统一与首批合法配置测试完成：已验证范围见第 7 节；其余配置、seeds 和非法参数检查待完整回归补齐。
 - 完整验证完成：满足以下全部条件。
 
 - Spec 中的功能均有对应测试，所有计划用例已实现并通过。

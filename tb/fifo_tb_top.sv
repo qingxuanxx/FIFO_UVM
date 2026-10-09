@@ -9,6 +9,7 @@ module fifo_tb_top;
 
     // 导入 UVM 包：uvm_pkg 包含 UVM 提供的类。导入后，下面才能使用 uvm_config_db
     import uvm_pkg::*;
+    import fifo_config_pkg::*;
 
     `include "agents/fifo_item.sv"
     `include "agents/fifo_monitor_item.sv"
@@ -38,8 +39,8 @@ module fifo_tb_top;
     `include "tests/fifo_wraparound_test.sv"
     `include "tests/fifo_random_test.sv"
 
-    parameter int width = 8;
-    parameter int depth = 16;
+    localparam int width = DATA_WIDTH;
+    localparam int depth = DEPTH;
 
     // 1. 产生时钟：周期为10ns
     logic clk = 1'b0;
@@ -95,6 +96,7 @@ module fifo_tb_top;
 
     // 6. config_db::set()
     initial begin
+        $display("FIFO_CONFIG: width=%0d, depth=%0d", width, depth);
         // 将接口实例 vif 存入 UVM 配置数据库，供 test 下的 driver、monitor 等组件获取
         uvm_config_db #(virtual fifo_if #(width))::set(
             null,

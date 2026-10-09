@@ -4,7 +4,7 @@ class fifo_driver extends uvm_driver #(fifo_item);
     `uvm_component_utils(fifo_driver)
 
     // 通过 config_db 获取 interface
-    virtual fifo_if #(8) vif;
+    virtual fifo_if #(DATA_WIDTH) vif;
 
     // 构造函数
     function new(string name = "fifo_driver", uvm_component parent = null);
@@ -16,7 +16,7 @@ class fifo_driver extends uvm_driver #(fifo_item);
 
         super.build_phase(phase);
 
-        if (!uvm_config_db #(virtual fifo_if #(8))::get(this, "", "vif", vif)) begin
+        if (!uvm_config_db #(virtual fifo_if #(DATA_WIDTH))::get(this, "", "vif", vif)) begin
             `uvm_fatal("NO_VIF", "fifo_driver cannot get FIFO interface")
         end
 

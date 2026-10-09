@@ -2,7 +2,7 @@
 
 这是一个同步 FIFO 设计与 UVM 验证学习项目。项目按照 spec、RTL、基础 testbench、UVM 验证平台、覆盖率与回归的顺序逐步完成。
 
-已完成 FIFO RTL、spec、vplan、基础 testbench 和 UVM 验证平台。默认配置下，五组定向测试和约束随机测试（seed=1、2、3）均已通过，初始复位输出由 scoreboard 检查。参数测试、覆盖率、SVA 和自动回归待完成；运行中复位和短复位脉冲本轮跳过。
+已完成 FIFO RTL、spec、vplan、基础 testbench 和 UVM 验证平台。默认配置下，五组定向测试和约束随机测试（seed=1、2、3）均已通过，初始复位输出由 scoreboard 检查。已通过五组合法参数配置的部分测试；其余参数测试、覆盖率、SVA 和自动回归待完成。运行中复位和短复位脉冲本轮跳过。
 
 - [spec](doc/fifo_spec.md)：参数、接口、复位、读写操作和错误信号。
 - [vplan](doc/verification_plan.md)：测试步骤、检查方法、覆盖率和回归通过条件。
@@ -80,6 +80,7 @@ FIFO_UVM/
 ├── smoke/
 │   └── fifo_tb.sv                # 非 UVM smoke testbench
 ├── tb/
+│   ├── fifo_config_pkg.sv        # 统一数据位宽和 FIFO 深度
 │   ├── fifo_if.sv                # 接口信号、driver 和 monitor 的 clocking block
 │   ├── fifo_tb_top.sv            # 时钟、复位、DUT 连接和 UVM 启动
 │   ├── agents/                   # item、sequencer、driver、monitor 和 agent
@@ -110,7 +111,8 @@ FIFO_UVM/
 - [x] env、reference model 和 scoreboard
 - [x] 当前范围定向测试：五组功能用例和初始复位输出检查
 - [x] 约束随机测试（默认配置，seed=1、2、3）
-- [ ] 参数测试
+- [x] 参数统一和首批合法配置测试
+- [ ] 补齐参数配置、随机 seeds 和非法参数检查
 - [ ] 功能覆盖率和 SVA
 - [ ] 自动回归和覆盖率收敛
 - [ ] 错误注入和验证收尾
@@ -125,6 +127,7 @@ vcs -full64 -sverilog -ntb_opts uvm \
     +incdir+tb \
     -kdb -debug_access+all \
     rtl/fifo.v \
+    tb/fifo_config_pkg.sv \
     tb/fifo_if.sv \
     tb/fifo_tb_top.sv \
     -top fifo_tb_top \
@@ -139,6 +142,8 @@ vcs -full64 -sverilog -ntb_opts uvm \
 ```
 
 定向和随机测试均由 scoreboard 比较 DUT 与 reference model 的结果。随机测试包含 1000 拍混合、偏写和偏读请求，结束前排空剩余数据；更换 seed 可运行不同的请求序列。smoke 测试和 Verdi 波形用于辅助观察，具体命令不在 README 中展开。
+
+默认配置为 `width=8`、`depth=16`。修改配置时，在 VCS 编译命令中添加 `+define+FIFO_WIDTH=8 +define+FIFO_DEPTH=2` 等参数，并重新编译；`fifo_config_pkg.sv` 必须先于 interface 和 top 编译。已验证配置与后续回归目标见 [vplan](doc/verification_plan.md#7-参数测试)。
 
 ## 环境
 

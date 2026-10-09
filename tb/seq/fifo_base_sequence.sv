@@ -7,7 +7,7 @@ class fifo_base_sequence extends uvm_sequence #(fifo_item);
     task send_fifo_request(
         bit wr,
         bit rd,
-        bit [7:0] wr_data
+        bit [DATA_WIDTH-1:0] wr_data
     );
 
         fifo_item item;

@@ -8,14 +8,14 @@ class fifo_monitor_item extends uvm_sequence_item;
     // 上升沿之前的请求
     logic wr_en;
     logic rd_en;
-    logic [7:0] wr_data;
+    logic [DATA_WIDTH-1:0] wr_data;
 
     // dut 处理之前的状态
     logic pre_full;
     logic pre_empty;
 
     // dut 处理之后的结果
-    logic [7:0] rd_data;
+    logic [DATA_WIDTH-1:0] rd_data;
     logic wr_error;
     logic rd_error;
 

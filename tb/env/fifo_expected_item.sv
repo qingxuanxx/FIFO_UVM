@@ -14,7 +14,7 @@ class fifo_expected_item extends uvm_object;
     bit pre_full;
     bit pre_empty;
 
-    bit [7:0] rd_data;
+    bit [DATA_WIDTH-1:0] rd_data;
     bit wr_error;
     bit rd_error;
 

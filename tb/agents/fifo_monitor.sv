@@ -4,7 +4,7 @@ class fifo_monitor extends uvm_monitor;
     `uvm_component_utils(fifo_monitor);
 
     // 用来访问 top 中的 interface 实例
-    virtual fifo_if #(8) vif;
+    virtual fifo_if #(DATA_WIDTH) vif;
 
     // 向scoreboard发送采样结果
     uvm_analysis_port #(fifo_monitor_item) analysis_port;
@@ -30,7 +30,7 @@ class fifo_monitor extends uvm_monitor;
 
         super.build_phase(phase);
 
-        if (!uvm_config_db #(virtual fifo_if #(8))::get(this, "", "vif", vif)) begin
+        if (!uvm_config_db #(virtual fifo_if #(DATA_WIDTH))::get(this, "", "vif", vif)) begin
             `uvm_fatal("NO_VIF", "fifo_monitor cannot get FIFO interface")
         end
 

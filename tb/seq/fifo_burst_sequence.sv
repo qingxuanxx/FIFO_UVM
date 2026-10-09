@@ -4,7 +4,7 @@ class fifo_burst_sequence extends fifo_base_sequence;
 
     // 与 DUT 及 reference model 保持一致的 FIFO 深度
     // 注意：如果后续 DUT 参数化深度变了，这里也要同步修改
-    localparam int unsigned fifo_depth = 16;
+    localparam int unsigned fifo_depth = DEPTH;
 
     function new(string name = "fifo_burst_sequence");
         super.new(name);
@@ -26,7 +26,7 @@ class fifo_burst_sequence extends fifo_base_sequence;
 
     task run_burst(input int unsigned count);
         int unsigned i;
-        bit [7:0] wr_data;
+        bit [DATA_WIDTH-1:0] wr_data;
 
         `uvm_info("TC_BURST", $sformatf("Run burst with %0d items", count), UVM_LOW)
 

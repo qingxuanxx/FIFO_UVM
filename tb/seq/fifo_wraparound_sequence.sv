@@ -3,7 +3,7 @@ class fifo_wraparound_sequence extends fifo_base_sequence;
     `uvm_object_utils(fifo_wraparound_sequence)
 
     // 当前先使用默认深度
-    localparam int unsigned FIFO_DEPTH = 16;
+    localparam int unsigned FIFO_DEPTH = DEPTH;
     localparam int unsigned NUM_ROUNDS = 6;
 
     function new(string name = "fifo_wraparound_sequence");
@@ -13,7 +13,7 @@ class fifo_wraparound_sequence extends fifo_base_sequence;
     task body();
         int unsigned round;
         int unsigned i;
-        bit [7:0] wr_data;
+        bit [DATA_WIDTH-1:0] wr_data;
 
         for (round = 0; round < NUM_ROUNDS; round++) begin
 

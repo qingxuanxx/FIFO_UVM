@@ -3,14 +3,14 @@ class fifo_reference_model extends uvm_object;
     `uvm_object_utils(fifo_reference_model)
 
     // 与当前的 dut 参数一致
-    localparam int depth = 16;
+    localparam int depth = DEPTH;
 
     // 模拟 fifo 内部保存的数据
-    bit [7:0] model_q[$];
+    bit [DATA_WIDTH-1:0] model_q[$];
 
     // 模拟 dut 的 rd_data 保持行为
     // 如果本拍没有读，或者读空导致错误，held_rd_data 保持不变
-    bit [7:0] held_rd_data;
+    bit [DATA_WIDTH-1:0] held_rd_data;
 
     // 构造函数
     function new(string name = "fifo_reference_model");

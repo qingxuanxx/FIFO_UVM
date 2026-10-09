@@ -1,7 +1,7 @@
 // 接口信号放进 fifo_if.sv
 // interface 是一组信号的集合，以后 driver 和 monitor 通过这组信号访问 DUT
 interface fifo_if #(
-    parameter int width = 8
+    parameter int width = fifo_config_pkg::DATA_WIDTH
 ) (
     input logic clk
 );

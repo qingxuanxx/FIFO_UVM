@@ -2,7 +2,7 @@ class fifo_random_sequence extends fifo_base_sequence;
 
     `uvm_object_utils(fifo_random_sequence)
 
-    localparam int unsigned FIFO_DEPTH = 16;
+    localparam int unsigned FIFO_DEPTH = DEPTH;
 
     // 根据已发送的请求计算剩余数据量，仅用于最后读空
     int unsigned occupancy;

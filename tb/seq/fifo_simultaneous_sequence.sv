@@ -2,7 +2,7 @@ class fifo_simultaneous_sequence extends fifo_base_sequence;
 
     `uvm_object_utils(fifo_simultaneous_sequence)
 
-    localparam int unsigned fifo_depth = 16;
+    localparam int unsigned fifo_depth = DEPTH;
     localparam int unsigned simultaneous_cycles = 2 * fifo_depth;
 
     function new(string name = "fifo_simultaneous_sequence");
@@ -15,8 +15,10 @@ class fifo_simultaneous_sequence extends fifo_base_sequence;
         // 非空非满：保留 1 个数据，连续同拍读写，验证深度不变
         run_nonfull_case(1, 8'h10, 8'h40);
 
-        // 非空非满：保留 depth-1 个数据，重复同拍读写
-        run_nonfull_case(fifo_depth - 1, 8'h20, 8'h80);
+        // depth=2 时，depth-1 与前面的 1 相同，不重复测试
+        if (fifo_depth > 2) begin
+            run_nonfull_case(fifo_depth - 1, 8'h20, 8'h80);
+        end
 
         // 空时同拍读写：写入成功，读出失败（预期 rd_error 拉高）
         `uvm_info("TC_SIMULTANEOUS", "Simultaneous read/write while empty", UVM_LOW)
@@ -45,11 +47,11 @@ class fifo_simultaneous_sequence extends fifo_base_sequence;
     // run_nonfull_case 任务最后会把数据读空。因此，当进入下一个场景时，FIFO 必定处于空状态
     task run_nonfull_case(
         input int unsigned initial_count,
-        input bit [7:0] initial_base,
-        input bit [7:0] stream_base
+        input bit [DATA_WIDTH-1:0] initial_base,
+        input bit [DATA_WIDTH-1:0] stream_base
     );
         int unsigned i;
-        bit [7:0] wr_data;
+        bit [DATA_WIDTH-1:0] wr_data;
 
         `uvm_info(
             "TC_SIMULTANEOUS",

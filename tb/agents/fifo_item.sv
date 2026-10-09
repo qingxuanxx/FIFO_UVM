@@ -9,7 +9,7 @@ class fifo_item extends uvm_sequence_item;
     // 一拍的读写请求
     rand bit wr_en;
     rand bit rd_en;
-    rand bit [7:0] wr_data;
+    rand bit [DATA_WIDTH-1:0] wr_data;
 
     // 构造函数，object 没有 parent
     function new(string name = "fifo_item");

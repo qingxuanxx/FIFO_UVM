@@ -4,7 +4,7 @@ class fifo_base_test extends uvm_test;
     `uvm_component_utils(fifo_base_test)
 
     // 给 test 声明一个名叫 vif 的变量，用来引用数据宽度为 8 的 fifo_if 实例
-    virtual fifo_if #(8) vif;
+    virtual fifo_if #(DATA_WIDTH) vif;
 
     // // 声明 agent
     // fifo_agent agent;
@@ -22,7 +22,7 @@ class fifo_base_test extends uvm_test;
         // config_db::get()
         // 为当前 test 查找名为 "vif" 的配置，并把结果保存到成员变量 vif 中
         // get() 成功返回 1，失败返回 0
-        if (!uvm_config_db #(virtual fifo_if #(8))::get(
+        if (!uvm_config_db #(virtual fifo_if #(DATA_WIDTH))::get(
             this,  // 以当前 test 对象作为查找路径的起点
             "",  // 不再追加下级路径，就是为当前 test 查配置
             "vif",  // 要查找的配置名称
