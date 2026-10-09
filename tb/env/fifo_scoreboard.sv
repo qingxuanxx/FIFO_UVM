@@ -49,21 +49,44 @@ class fifo_scoreboard extends uvm_scoreboard;
         // 调用 reference model 来计算预期结果
         expected = model.predict(sample);
 
-        // if (sample.rst === 1'b1) begin
-        //     `uvm_info("FIFO_SCOREBOARD", "Received reset sample", UVM_LOW)
-        // end
-        // else begin
-        //     `uvm_info("FIFO_SCOREBOARD", sample.convert2string(), UVM_LOW)
-        // end
-
         if (sample.rst === 1'b1) begin
-            `uvm_info("FIFO_SCOREBOARD", "Reference model reset", UVM_LOW)
 
+            // predict() 已清空模型，复位时比较更新后的输出
+            if ({
+                sample.rd_data, sample.wr_error, sample.rd_error,
+                sample.post_full, sample.post_empty
+            } !== {
+                expected.rd_data, expected.wr_error, expected.rd_error,
+                expected.post_full, expected.post_empty
+            }) begin
+
+                mismatch_count++;
+
+                `uvm_error(
+                    "FIFO_RESET_MISMATCH",
+                    $sformatf(
+                        "Reset outputs incorrect: actual rd_data=%h, wr_error=%b, rd_error=%b, full=%b, empty=%b; expected rd_data=%h, wr_error=%b, rd_error=%b, full=%b, empty=%b",
+                        sample.rd_data, sample.wr_error, sample.rd_error,
+                        sample.post_full, sample.post_empty,
+                        expected.rd_data, expected.wr_error, expected.rd_error,
+                        expected.post_full, expected.post_empty
+                    )
+                )
+            end
+            else begin
+
+                pass_count++;
+
+                `uvm_info(
+                    "FIFO_RESET_PASS",
+                    "Reset outputs match reference model",
+                    UVM_LOW
+                )
+            end
+
+            // 复位结果比较完成，不再执行正常周期的比较
             return;
-            // 当仿真处于复位期间（rst=1）时，DUT 内部的信号（如 rd_data、full、empty）可能是不定态（X），或者是没有意义的初始值
-            // 如果此时还去执行后面的 if (actual !== expected) 比对逻辑，会导致仿真里疯狂爆出无意义的误报
-            // return; 的作用就是：
-            // “复位周期，向 Scoreboard 打个报告（清空队列），然后就立刻退出这个 write 函数，不参与后面的比对
+
         end
 
         // 直接一次比较所有需要检查的结果

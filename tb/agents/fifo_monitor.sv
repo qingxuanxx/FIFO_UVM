@@ -54,12 +54,34 @@ class fifo_monitor extends uvm_monitor;
 
                 sample.rst = 1'b1;
 
-                `uvm_info("FIFO_MONITOR", "Reset active", UVM_LOW);
+                // // monitor 在复位期间只发送 rst=1，没有采集复位后的输出
+                // `uvm_info("FIFO_MONITOR", "Reset active", UVM_LOW);
+
+                // 采集本次上升沿之后的实际输出
+                sample.rd_data = vif.mon_cb.rd_data;
+                sample.wr_error = vif.mon_cb.wr_error;
+                sample.rd_error = vif.mon_cb.rd_error;
+
+                sample.post_full = vif.mon_cb.post_full;
+                sample.post_empty = vif.mon_cb.post_empty;
+
+                `uvm_info(
+                    "FIFO_MONITOR",
+                    $sformatf(
+                        "Reset active: rd_data=%h, full=%b, empty=%b, wr_error=%b, rd_error=%b",
+                        sample.rd_data,
+                        sample.post_full,
+                        sample.post_empty,
+                        sample.wr_error,
+                        sample.rd_error
+                    ),
+                    UVM_LOW
+                )
 
                 // 关键：把复位事件发出去，通知 Scoreboard 清空队列
                 analysis_port.write(sample);
 
-            end 
+            end
             else if (vif.mon_cb.rst === 1'b0) begin
 
                 // // 先定义一个 string 变量

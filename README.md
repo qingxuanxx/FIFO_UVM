@@ -2,7 +2,7 @@
 
 这是一个同步 FIFO 设计与 UVM 验证学习项目。项目按照 spec、RTL、基础 testbench、UVM 验证平台、覆盖率与回归的顺序逐步完成。
 
-已完成 FIFO RTL、spec、vplan、基础 testbench 和 UVM 验证平台。默认配置下，`fifo_single_wr_rd_test`、`fifo_burst_test`、`fifo_overflow_underflow_test` 和 `fifo_simultaneous_test` 的本地仿真日志均显示 scoreboard 无 mismatch，UVM 无 warning、error 或 fatal。回卷、运行中复位及后续覆盖率和回归工作仍待完成。
+已完成 FIFO RTL、spec、vplan、基础 testbench 和 UVM 验证平台。默认配置下，五组定向测试和约束随机测试（seed=1、2、3）均已通过，初始复位输出由 scoreboard 检查。参数测试、覆盖率、SVA 和自动回归待完成；运行中复位和短复位脉冲本轮跳过。
 
 - [spec](doc/fifo_spec.md)：参数、接口、复位、读写操作和错误信号。
 - [vplan](doc/verification_plan.md)：测试步骤、检查方法、覆盖率和回归通过条件。
@@ -91,7 +91,9 @@ FIFO_UVM/
 │       ├── fifo_single_wr_rd_test.sv
 │       ├── fifo_burst_test.sv
 │       ├── fifo_overflow_underflow_test.sv
-│       └── fifo_simultaneous_test.sv
+│       ├── fifo_simultaneous_test.sv
+│       ├── fifo_wraparound_test.sv
+│       └── fifo_random_test.sv
 └── sim/
     ├── Makefile                  # 编译和仿真入口（待完成）
     ├── filelist.f                # UVM 文件列表（待完成）
@@ -106,9 +108,9 @@ FIFO_UVM/
 - [x] item、sequence、sequencer 和 driver
 - [x] monitor 和 agent
 - [x] env、reference model 和 scoreboard
-- [x] 初版定向测试：单笔读写、burst、overflow/underflow、同时读写
-- [ ] 指针回卷和运行中复位测试
-- [ ] 约束随机和参数测试
+- [x] 当前范围定向测试：五组功能用例和初始复位输出检查
+- [x] 约束随机测试（默认配置，seed=1、2、3）
+- [ ] 参数测试
 - [ ] 功能覆盖率和 SVA
 - [ ] 自动回归和覆盖率收敛
 - [ ] 错误注入和验证收尾
@@ -132,9 +134,11 @@ vcs -full64 -sverilog -ntb_opts uvm \
 ./simv_if +UVM_TESTNAME=fifo_burst_test
 ./simv_if +UVM_TESTNAME=fifo_overflow_underflow_test
 ./simv_if +UVM_TESTNAME=fifo_simultaneous_test
+./simv_if +UVM_TESTNAME=fifo_wraparound_test
+./simv_if +UVM_TESTNAME=fifo_random_test +ntb_random_seed=1
 ```
 
-这些定向测试由 scoreboard 比较 DUT 与 reference model 的结果。smoke 测试和 Verdi 波形用于辅助观察，具体命令不在 README 中展开。
+定向和随机测试均由 scoreboard 比较 DUT 与 reference model 的结果。随机测试包含 1000 拍混合、偏写和偏读请求，结束前排空剩余数据；更换 seed 可运行不同的请求序列。smoke 测试和 Verdi 波形用于辅助观察，具体命令不在 README 中展开。
 
 ## 环境
 
@@ -146,4 +150,4 @@ vcs -full64 -sverilog -ntb_opts uvm \
 | OS | Ubuntu 22.04.5 LTS，VMware 虚拟机 |
 | X Server | VcXsrv（Windows） |
 
-> 最后更新：2026-09-25
+> 最后更新：2026-10-09
