@@ -1,0 +1,3 @@
+// 代码和断言覆盖率限定为 DUT 与 SVA，避免 UVM 库影响统计。
++tree fifo_tb_top.dut
++tree fifo_tb_top.sva
