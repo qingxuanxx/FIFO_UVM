@@ -1,6 +1,7 @@
 // 时钟、复位和 DUT 实例放进 fifo_tb_top.sv
 
 `include "uvm_macros.svh"
+`include "sva/fifo_sva.sv"
 
 module fifo_tb_top;
 
@@ -21,6 +22,7 @@ module fifo_tb_top;
     `include "env/fifo_expected_item.sv"
     `include "env/fifo_reference_model.sv"
     `include "env/fifo_scoreboard.sv"
+    `include "env/fifo_coverage.sv"
     `include "env/fifo_env.sv"
 
     `include "seq/fifo_base_sequence.sv"
@@ -68,6 +70,24 @@ module fifo_tb_top;
         .empty(vif.empty),
         .wr_error(vif.wr_error),
         .rd_error(vif.rd_error)
+    );
+
+    // SVA 独立观察接口和 DUT 内部指针。
+    fifo_sva #(
+        .width(width),
+        .depth(depth)
+    ) sva (
+        .clk(clk),
+        .rst(vif.rst),
+        .wr_en(vif.wr_en),
+        .rd_en(vif.rd_en),
+        .rd_data(vif.rd_data),
+        .full(vif.full),
+        .empty(vif.empty),
+        .wr_error(vif.wr_error),
+        .rd_error(vif.rd_error),
+        .wr_ptr(dut.wr_ptr),
+        .rd_ptr(dut.rd_ptr)
     );
 
     // 4. 设置初始输入，并且产生复位

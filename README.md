@@ -2,7 +2,7 @@
 
 这是一个同步 FIFO 设计与 UVM 验证学习项目。项目按照 spec、RTL、基础 testbench、UVM 验证平台、覆盖率与回归的顺序逐步完成。
 
-已完成 FIFO RTL、spec、vplan、基础 testbench 和 UVM 验证平台。五组定向测试、约束随机测试和 vplan 参数矩阵均已通过，初始复位输出由 scoreboard 检查。功能覆盖率、SVA 和自动回归待完成；运行中复位和短复位脉冲本轮跳过。
+已完成 FIFO RTL、spec、vplan、基础 testbench 和 UVM 验证平台。五组定向测试、约束随机测试和 vplan 参数矩阵均已通过，初始复位输出由 scoreboard 检查。功能覆盖率模型和 SVA 已接入，默认配置下已复用定向和随机激励检查。下一步完成自动回归、覆盖率收敛和错误注入；运行中复位和短复位脉冲本轮跳过。
 
 - [spec](doc/fifo_spec.md)：参数、接口、复位、读写操作和错误信号。
 - [vplan](doc/verification_plan.md)：测试步骤、检查方法、覆盖率和回归通过条件。
@@ -84,9 +84,9 @@ FIFO_UVM/
 │   ├── fifo_if.sv                # 接口信号、driver 和 monitor 的 clocking block
 │   ├── fifo_tb_top.sv            # 时钟、复位、DUT 连接和 UVM 启动
 │   ├── agents/                   # item、sequencer、driver、monitor 和 agent
-│   ├── env/                      # env、reference model 和 scoreboard
+│   ├── env/                      # env、reference model、scoreboard 和 coverage
 │   ├── seq/                      # 通用和定向 sequence
-│   ├── sva/                      # assertions（待实现）
+│   ├── sva/                      # 接口、指针和复位断言
 │   └── tests/
 │       ├── fifo_base_test.sv
 │       ├── fifo_single_wr_rd_test.sv
@@ -108,9 +108,17 @@ FIFO_UVM/
 - [x] UVM 验证平台
 - [x] 定向测试和约束随机测试
 - [x] 参数测试
-- [ ] 功能覆盖率和 SVA
+- [x] 功能覆盖率模型和 SVA
 - [ ] 自动回归和覆盖率收敛
 - [ ] 错误注入和验证收尾
+
+## 覆盖率和 SVA
+
+功能覆盖率统计请求与状态组合、数据个数、空满变化、错误信号变化、数据模式、单 1 位置、逐位 0/1、连续成功读写和非零读输出保持。scoreboard 将比较通过的模型结果发送给 coverage，用于统计数据个数和空满变化。
+
+SVA 检查未知值、空满与指针的关系、指针加一和保持、读输出保持、错误信号、指针回卷及复位值，并记录关键场景的匹配次数。复位值在触发事件后 1 ps 检查。
+
+默认配置下，各覆盖项已由不同用例分别命中；burst、overflow_underflow、wraparound、simultaneous 和随机 seed=1 接入 SVA 后均无断言失败或 scoreboard mismatch。单个用例的覆盖率不代表整个项目覆盖率，覆盖率数据库合并、多参数复查和自动回归仍待完成。
 
 ## 运行 UVM 测试
 
@@ -150,4 +158,4 @@ vcs -full64 -sverilog -ntb_opts uvm \
 | OS | Ubuntu 22.04.5 LTS，VMware 虚拟机 |
 | X Server | VcXsrv（Windows） |
 
-> 最后更新：2026-10-09
+> 最后更新：2026-10-10

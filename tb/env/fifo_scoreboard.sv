@@ -5,6 +5,9 @@ class fifo_scoreboard extends uvm_scoreboard;
 
     // 接受来自monitor的采样对象
     uvm_analysis_imp #(fifo_monitor_item, fifo_scoreboard) analysis_export;
+
+    // 将正常周期比较通过的模型结果发送给 coverage
+    uvm_analysis_port #(fifo_expected_item) expected_port;
     // 之前在 Monitor 里用的是 uvm_analysis_port
     // 现在 Scoreboard 里用的是 uvm_analysis_imp
     //
@@ -26,6 +29,7 @@ class fifo_scoreboard extends uvm_scoreboard;
 
         // 创建接收端，并指定由当前 scoreboard 处理数据
         analysis_export = new("analysis_export", this);
+        expected_port = new("expected_port", this);
 
     endfunction
 
@@ -107,6 +111,8 @@ class fifo_scoreboard extends uvm_scoreboard;
             pass_count ++;
 
             `uvm_info("FIFO_SCOREBOARD", $sformatf("PASS: %s", sample.convert2string()), UVM_LOW)
+
+            expected_port.write(expected);
         end
 
     endfunction

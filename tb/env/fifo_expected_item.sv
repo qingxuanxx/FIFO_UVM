@@ -21,7 +21,8 @@ class fifo_expected_item extends uvm_object;
     bit post_full;
     bit post_empty;
 
-    int unsigned occupancy;  // 当前 FIFO 里存了多少个数据
+    int unsigned pre_occupancy;  // 本拍操作前的模型数据个数
+    int unsigned occupancy;  // 本拍操作后的模型数据个数
 
     // 构造函数
     function new(string name = "fifo_expected_item");

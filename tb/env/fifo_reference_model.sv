@@ -55,6 +55,7 @@ class fifo_reference_model extends uvm_object;
             expected.post_empty = 1'b1;
 
             expected.occupancy = 0;
+            expected.pre_occupancy = 0;
 
             // 复位结果已经计算完成，立即返回
             return expected;
@@ -62,6 +63,7 @@ class fifo_reference_model extends uvm_object;
         end
 
         // 1. 根据 model_q 计算处理之前的状态
+        expected.pre_occupancy = model_q.size();
         expected.pre_empty = (model_q.size() == 0);
         expected.pre_full = (model_q.size() == depth);
 
